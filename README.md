@@ -24,7 +24,7 @@ If you use this code, please consider citing our work accordingly:
 
 ## Acknowledgments
 
-This work was supported by the French national funds (PIA2’program “Intensive Computing and Numerical Simulation” call) under contract No. P112331-3422142 (3DNeuroSecure project). The purpose of this
+This work was supported by the French national funds (PIA2’program “Intensive Computing and Numerical Simulation” call) under contract No. P112331-3422142 (**3DNeuroSecure** project). The purpose of this
 project was to propose a collaborative solution to process and interactively visualize massive multi-scale data from ultra-high resolution 3D imaging. This secure solution also aims to break therapeutic innovation by allowing the exploitation of 3D images and complex data of large dimensions as part of applications framework linked to neurodegenerative diseases like Alzheimer’s. We would like to thank all the partners of the consortium led by Neoxia and in particular: the French Atomic Energy Commission (CEA), Tribvn, Archos and ESIA.
 
 ## Contact
