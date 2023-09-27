@@ -1,5 +1,6 @@
 # GPU-Out-of-Core-Volume-Data
-Out-of-core solution for large structured volume grids (voxels) access from GPU
+Out-of-core solution for large structured volume grids (voxels) access from GPU.
+
 This is the code release attached to the paper [Interactive Visualization and On-Demand Processing of Large Volume Data: A Fully GPU-Based Out-of-Core Approach](https://hal.univ-reims.fr/hal-01705431) published in TVCG in 2020.
 
 ![shotCam](misc/teaser.png)
@@ -23,4 +24,4 @@ If you use this code, please consider citing our work accordingly:
 
 ## Contact
 
-Feel free to send an e-mail to `sarton@unistra.fr` or `laurent.lucas[at]univ-reims.fr` if you have any question.
+Feel free to send an e-mail to `sarton[at]unistra.fr` or `laurent.lucas[at]univ-reims.fr` if you have any question.
