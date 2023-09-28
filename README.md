@@ -10,7 +10,7 @@ This is the code release attached to the paper [Interactive Visualization and On
 If you use this code, please consider citing our work accordingly: 
 
 ```
-@inproceedings{randrianandrasana:2021:tmblmr,
+@inproceedings{sarton:2020:goocvd,
  author = {Sarton, Jonathan and Courilleau, Nicolas and Remion, Yannick and Lucas, Laurent},
  journal = {IEEE Transactions on Visualization and Computer Graphics},
  title = {{Interactive Visualization and On-Demand Processing of Large Volume Data: A Fully GPU-Based Out-of-Core Approach}},
