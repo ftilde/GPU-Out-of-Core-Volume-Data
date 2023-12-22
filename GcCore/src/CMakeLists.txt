@@ -29,14 +29,14 @@ if(NOT DEFINED PROJECT_APPLICATION)
         if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 5.1)
             message(FATAL_ERROR "GCC version must be at least 5.1!")
         #else() 
-        #set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS}"}
+        #set(CMAKE_CXX_FLAGS "-std=c++17 ${CMAKE_CXX_FLAGS}"}
         endif()
     else()
     message(WARNING "You are using an unsupported compiler! Compilation has only been tested with GCC.")
     endif()
 
-    #--- Activation du support C++11 ou C++14 mais dans ce cas, verifiez les versions des compilateurs ---
-    set(CMAKE_CXX_STANDARD 11)
+    #--- Support of C++17 (or C++14 or C++11, check compiler version) ---
+    set(CMAKE_CXX_STANDARD 17)
     set(CMAKE_CXX_STANDARD_REQUIRED on)
 
     if (NOT CMAKE_CUDA_FLAGS)
@@ -52,21 +52,21 @@ if(NOT DEFINED PROJECT_APPLICATION)
         #set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS}; --device-debug -g -gencode arch=compute_30,code=sm_30)
         set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS}; -g ${CMAKE_CUDA_FLAGS})
         # GCC flags
-        set(CMAKE_CXX_FLAGS "-Wall -std=c++11 -g -pg")
+        set(CMAKE_CXX_FLAGS "-Wall -std=c++17 -g -pg")
         # pre-processor define for debug mode
         add_definitions(-DTDNS_DEBUG)
     elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
         # Pass options to NVCC // for profiling, add -lineinfo
         set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS}; -O3 ${CMAKE_CUDA_FLAGS})
         # GCC flags
-        set(CMAKE_CXX_FLAGS "-Wall -std=c++11 -O3")
+        set(CMAKE_CXX_FLAGS "-Wall -std=c++17 -O3")
         # pre-processor define for release mode
         add_definitions(-DTDNS_RELEASE)
     elseif(CMAKE_BUILD_TYPE STREQUAL "Coverage")
         # Pass options to NVCC
         set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS}; --device-debug -g ${CMAKE_CUDA_FLAGS})
         # GCC flags
-        set(CMAKE_CXX_FLAGS "-Wall -std=c++11 -g -pg -ftest-coverage -fprofile-arcs")
+        set(CMAKE_CXX_FLAGS "-Wall -std=c++17 -g -pg -ftest-coverage -fprofile-arcs")
         # pre-processor define for debug mode
         add_definitions(-DTDNS_DEBUG)
     endif()
