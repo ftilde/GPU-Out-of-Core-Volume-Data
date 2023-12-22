@@ -111,6 +111,8 @@ namespace gpucache
     {
         _bricksManager = tdns::common::create_unique_ptr<tdns::data::BricksManager>
             (volumeConfiguration.VolumeDirectory, volumeConfiguration.BrickSize, volumeConfiguration.BigBrickSize, sizeof(T));
+        // create request buffer (!! size of 50 because we limit the number of requests to 50 (according to the
+        // list in CacheManager::create_request_list()) --> We need to handle this dynamically !!!!!!!
         _requestBuffer = tdns::common::create_unique_ptr<tdns::common::DynamicArray3dHost
             <T, tdns::common::DynamicArrayOptions::Options::Mapped>>
             (tdns::math::Vector3ui(50 *
@@ -325,6 +327,8 @@ namespace gpucache
                     ++nbBigBrickAdded;
                     //add it to the map as non empty brick
                     bricksAlreadyAsked.insert({ coordinateBigBrick, cptMap });
+                    if (_nbNonEmptyBricks > 50)
+                        assert(false && "Bricks number exceed the request buffer size ! We need to handle this according to the CacheManager::create_request_list()!!!!!! RequestHandler.hpp handle_request()"); //We need to handle this !!!!!!
                     _bigBrickIndexes[_nbNonEmptyBricks] = cptMap;
                     _bigBrickCoords[cptMap] = coordinateBigBrick;
                     cptMap++;
@@ -341,7 +345,7 @@ namespace gpucache
                 }
                 break;
                 default:
-                    assert(false && "We need to handle this !!!!!! RequestHandler.cu - line 327"); //We need to handle this !!!!!!
+                    assert(false && "Unknown brick status ! We need to handle this !!!!!! RequestHandler.hpp handle_request()"); //We need to handle this !!!!!!
                     continue;
             }
         }

@@ -406,8 +406,8 @@ namespace gpucache
     template<typename T>
     inline void CacheManager<T>::create_request_list(thrust::device_vector<uint4> &requestedBricks)
     {
-        // Number of requests is limited to 5 !
-        thrust::device_vector<size_t> result(1);
+        // Number of requests is limited to 50 !
+        thrust::device_vector<size_t> result(50);
 
         // stream compaction to keep the flaged elements (with curent timestamp)
         size_t nbElements = thrust::copy_if
@@ -428,7 +428,7 @@ namespace gpucache
             {
                 end = std::chrono::high_resolution_clock::now();
                 uint64_t duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-                std::cout << duration << " us" << std::endl;
+                // std::cout << duration << " us" << std::endl;
                 done = false;
             }
             return;
@@ -567,6 +567,11 @@ namespace gpucache
             // ====================== WRITE BRICKS IN CACHE ==================
             T *bricks = nullptr;
             _requestHandler->get_request_buffer().get_mapped_device_pointer(&bricks);
+
+            // JS DEBUG PRINT BRICK CONTENT
+            // std::cout << "CM BRICKS CONTENT :" << std::endl;
+            // for (int i = 0; i < 100; ++i)
+            //     std::cout << reinterpret_cast<uint8_t>(bricks[i]);
 
             tdns::math::Vector3ui bigBrickSize = _requestHandler->get_big_brick_size();
             tdns::math::Vector3ui bigBrickVoxels;
