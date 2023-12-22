@@ -54,8 +54,8 @@ unset(_cmake_expected_targets)
 add_library(lz4 INTERFACE IMPORTED)
 
 set_target_properties(lz4 PROPERTIES
-  INTERFACE_INCLUDE_DIRECTORIES "/home/jo/code/3dns_gitHub/GcCore/dependencies/lz4-1.8.1/include"
-  INTERFACE_LINK_LIBRARIES "/home/jo/code/3dns_gitHub/GcCore/dependencies/lz4-1.8.1/lib/liblz4.so"
+  INTERFACE_INCLUDE_DIRECTORIES "/home/jo/code/GPU-Out-of-Core-Volume-Data/GcCore/dependencies/lz4-1.8.1/include"
+  INTERFACE_LINK_LIBRARIES "/home/jo/code/GPU-Out-of-Core-Volume-Data/GcCore/dependencies/lz4-1.8.1/lib/liblz4.so"
 )
 
 # This file does not depend on other imported targets which have
