@@ -16,7 +16,7 @@ namespace data
     //---------------------------------------------------------------------------------------------------
     FilesManager::FilesManager()
     {
-        _rootPath = "./data/";
+        // _rootPath = "./data/";
         
         //if (!tdns::common::exists(_rootPath))
         //    create_folder(_rootPath);
@@ -31,12 +31,11 @@ namespace data
     //---------------------------------------------------------------------------------------------------
     std::unique_ptr<AbstractFile> FilesManager::get_file(const std::string &file)
     {
-        // Get the extension of the file
-        std::string extension = tdns::common::get_extension(file);
         // Get the file name without the extension
         std::string baseFileName = tdns::common::get_file_base_name(file);
         // Construct the path of the file, from the rootPath
-        std::string filePath = _rootPath + baseFileName + "/" + file;
+        std::string filePath = baseFileName + "/" + file;
+        // std::string filePath = _rootPath + baseFileName + "/" + file;
 
         return get_file_from_path(filePath);
     }
@@ -70,7 +69,7 @@ namespace data
         if ((extension == "ima" || extension == "imaMulti") &&
             !tdns::common::exists(tdns::common::remove_extension(filePath) + ".dim"))
         {
-            LOGERROR(10, "Cannot open the file \"" << filePath << "\". Yhe corresonding header file .dim does not exists.");
+            LOGERROR(10, "Cannot open the file \"" << filePath << "\". The corresonding header file .dim does not exists.");
             return nullptr;
         }
 
