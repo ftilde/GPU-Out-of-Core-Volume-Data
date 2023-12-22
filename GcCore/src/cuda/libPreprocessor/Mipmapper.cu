@@ -168,8 +168,7 @@ namespace preprocessor
         uint32_t numberEncodedBytes = configuration.encodedBytes;
         uint32_t numberChannels = configuration.numberChannels;
 
-        // std::string fileName = configuration.volumeDirectory + configuration.volumeFileName;
-        std::string fileName = configuration.volumeFileName;
+        std::string fileName = configuration.volumeDirectory + configuration.volumeFileName;
         // Get the file
         std::unique_ptr<tdns::data::AbstractFile> fileUp = tdns::data::FilesManager::get_instance().get_file(fileName);
         if (!fileUp)
@@ -377,19 +376,25 @@ namespace preprocessor
     //---------------------------------------------------------------------------------------------------
     void Mipmapper::process(tdns::data::MetaData &metaData)
     {
-        // Get the filename
-        std::string fileName;
+        // Get the full directory + filename
+        std::string fileName, workingDirectory;
+        if(!tdns::data::Configuration::get_instance().get_field("WorkingDirectory", workingDirectory))
+        {
+            LOGERROR(20, "Unable to get the directory of the volume. workingDirectory not set in configuration.");
+            return;
+        }
         if(!tdns::data::Configuration::get_instance().get_field("VolumeFile", fileName))
         {
             LOGERROR(20, "Unable to get the file name of the volume. VolumeFile not set in configuration.");
             return;
         }
+        std::string filePath = workingDirectory + tdns::common::get_file_base_name(fileName) + "/" + tdns::common::get_file_name(fileName);
 
         // Get the file
-        std::unique_ptr<tdns::data::AbstractFile> fileUp = tdns::data::FilesManager::get_instance().get_file(fileName);
+        std::unique_ptr<tdns::data::AbstractFile> fileUp = tdns::data::FilesManager::get_instance().get_file_from_path(filePath);
         if (!fileUp)
         {
-            LOGERROR(20, "Cannot find the file " + fileName);
+            LOGERROR(20, "Cannot find the file " + filePath);
             return;
         }
 
