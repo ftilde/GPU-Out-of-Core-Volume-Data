@@ -79,7 +79,6 @@ namespace preprocessor
     bool process_bricking(const BrickingConfiguration& conf)
     {
         std::string filePath = get_file_path(conf);
-        std::cout << "START pre_process_bricking avec : " << filePath << std::endl;
 
         LOGINFO(20, tdns::common::log_details::Verbosity::MEDIUM, "Starting bricking volume [" << filePath << "] - level " << conf.level << ".");
         std::unique_ptr<tdns::data::AbstractFile> file = tdns::data::FilesManager::get_instance().get_file_from_path(filePath);
