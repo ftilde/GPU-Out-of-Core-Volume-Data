@@ -65,7 +65,7 @@ These instructions will get you a copy of the project up and running on your loc
 ## Building the project
 
 ###### Compute capabilities
-Depending of you graphics card you may use differents compute capabilities. See [CUDA wikipedia](https://en.wikipedia.org/wiki/CUDA#GPUs_supported) to find out which ones are supported !
+Depending on your GPU you may use differents compute capabilities. See [CUDA wikipedia](https://en.wikipedia.org/wiki/CUDA#GPUs_supported) to find out which ones are supported !
 
 ### Windows
 
