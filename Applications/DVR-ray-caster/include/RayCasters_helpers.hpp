@@ -54,6 +54,20 @@ namespace graphics
                             float *LODStepSize,
                             size_t seed);
 
+    __global__ void TDNS_API RayCast(uint32_t *pixelBuffer,
+                            cudaTextureObject_t tfTex,
+                            uint2 screenSize,
+                            uint32_t renderScreenWidth,
+                            float fov,
+                            float3 bboxMin, float3 bboxMax,
+                            int32_t steps, float tstep,
+                            tdns::gpucache::K_CacheManager<float1> manager,
+                            float3 *invLevelsSize,
+                            uint3 *levelsSize,
+                            float3 *LODBrickSize,
+                            float *LODStepSize,
+                            size_t seed);
+
     __device__ float3 TDNS_API operator*(float* matrix, float3 v);
 
     __device__ float3 TDNS_API mul(const float4x3 &M, const float3 &v);
