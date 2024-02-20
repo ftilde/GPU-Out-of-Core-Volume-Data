@@ -111,11 +111,12 @@ namespace gpucache
         std::unique_ptr<tdns::common::DynamicArray3dDevice<uint32_t>>   _requestBuffer;         ///<
         std::unique_ptr<tdns::common::DynamicArray3dDevice<uint8_t>>    _dataCacheMask;         ///<
         std::unique_ptr<RequestHandler<T>>                              _requestHandler;        ///<
+        size_t                                                          _nbMaxRequests;         ///<
         tdns::math::Vector3f                                            _oneOverBrickSize;      ///<
         std::unique_ptr<tdns::common::DynamicArray3dDevice<float3>>     _initialOverRealSize;   ///<
 
-        tdns::math::Vector3ui                   _brickSize;
-        tdns::math::Vector3ui                   _covering;
+        tdns::math::Vector3ui                                           _brickSize;             ///<
+        tdns::math::Vector3ui                                           _covering;              ///<
 
     private:
         
@@ -152,7 +153,7 @@ namespace gpucache
 
         uint32_t nbLevelOfResolution = volumeSizes.size();
         uint32_t nbLevelPTHierarchy = cacheSize.size() + 1;
-        
+
         std::vector<std::vector<uint3>> realNumberOfEntries(nbLevelPTHierarchy, std::vector<uint3>(nbLevelOfResolution));
         std::vector<std::vector<uint3>> virtualizedNumberOfEntries(nbLevelPTHierarchy, std::vector<uint3>(nbLevelOfResolution));
         
@@ -258,7 +259,9 @@ namespace gpucache
 
         const tdns::math::Vector3ui &brickSize = blockSize.front();
 
-        _requestHandler = tdns::common::create_unique_ptr<RequestHandler<T>>(volumeConfiguration, gpuID);
+        // Number of brick requests is limited to 50 !
+        _nbMaxRequests = 50;
+        _requestHandler = tdns::common::create_unique_ptr<RequestHandler<T>>(volumeConfiguration, _nbMaxRequests, gpuID);
         _requestDone = false;
         _requestHandler->start();
 
@@ -406,8 +409,7 @@ namespace gpucache
     template<typename T>
     inline void CacheManager<T>::create_request_list(thrust::device_vector<uint4> &requestedBricks)
     {
-        // Number of requests is limited to 50 !
-        thrust::device_vector<size_t> result(50);
+        thrust::device_vector<size_t> result(_requestBuffer->size());
 
         // stream compaction to keep the flaged elements (with curent timestamp)
         size_t nbElements = thrust::copy_if
@@ -437,7 +439,8 @@ namespace gpucache
         done = true;
 
         // limit the number of request brick !
-        nbElements = std::min(nbElements, result.size());
+        size_t maxElem = _nbMaxRequests;
+        nbElements = std::min(nbElements, maxElem);
 
         // Request list with 3D indexes and level of resolution
         requestedBricks.resize(nbElements);
@@ -567,11 +570,6 @@ namespace gpucache
             // ====================== WRITE BRICKS IN CACHE ==================
             T *bricks = nullptr;
             _requestHandler->get_request_buffer().get_mapped_device_pointer(&bricks);
-
-            // JS DEBUG PRINT BRICK CONTENT
-            // std::cout << "CM BRICKS CONTENT :" << std::endl;
-            // for (int i = 0; i < 100; ++i)
-            //     std::cout << reinterpret_cast<uint8_t>(bricks[i]);
 
             tdns::math::Vector3ui bigBrickSize = _requestHandler->get_big_brick_size();
             tdns::math::Vector3ui bigBrickVoxels;

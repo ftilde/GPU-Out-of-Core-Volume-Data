@@ -34,7 +34,7 @@ namespace gpucache
         /**
         * @brief
         */
-        RequestHandler(const tdns::data::VolumeConfiguration &volumeConfiguration, int32_t gpuID = 0);
+        RequestHandler(const tdns::data::VolumeConfiguration &volumeConfiguration, size_t nbMaxRequests, int32_t gpuID = 0);
 
         void start();
         
@@ -91,6 +91,7 @@ namespace gpucache
         std::unique_ptr<tdns::data::BricksManager>                      _bricksManager;     ///<
         std::unique_ptr<tdns::common::DynamicArray3dHost
             <T, tdns::common::DynamicArrayOptions::Options::Mapped>>    _requestBuffer;     ///<
+        size_t                                                          _nbMaxRequests;     ///<
         thrust::device_vector<bool>                                     _emptyFlags;        ///<
         thrust::device_vector<uint32_t>                                 _bigBrickIndexes;   ///< Index of the big bricks in the mapped buffer for each small brick.
         thrust::device_vector<uint4>                                    _bigBrickCoords;    ///<
@@ -107,20 +108,19 @@ namespace gpucache
 
     //---------------------------------------------------------------------------------------------------
     template<typename T>
-    inline RequestHandler<T>::RequestHandler(const tdns::data::VolumeConfiguration &volumeConfiguration, int32_t gpuID /*= 0*/)
+    inline RequestHandler<T>::RequestHandler(const tdns::data::VolumeConfiguration &volumeConfiguration, size_t nbMaxRequests, int32_t gpuID /*= 0*/)
     {
         _bricksManager = tdns::common::create_unique_ptr<tdns::data::BricksManager>
             (volumeConfiguration.VolumeDirectory, volumeConfiguration.BrickSize, volumeConfiguration.BigBrickSize, sizeof(T));
-        // create request buffer (!! size of 50 because we limit the number of requests to 50 (according to the
-        // list in CacheManager::create_request_list()) --> We need to handle this dynamically !!!!!!!
+        _nbMaxRequests = nbMaxRequests;
         _requestBuffer = tdns::common::create_unique_ptr<tdns::common::DynamicArray3dHost
             <T, tdns::common::DynamicArrayOptions::Options::Mapped>>
-            (tdns::math::Vector3ui(50 *
+            (tdns::math::Vector3ui(_nbMaxRequests *
                 volumeConfiguration.BrickSize[0] * volumeConfiguration.BigBrickSize[0],
                 volumeConfiguration.BrickSize[1] * volumeConfiguration.BigBrickSize[1],
                 volumeConfiguration.BrickSize[2] * volumeConfiguration.BigBrickSize[2]));
-        _bigBrickIndexes.resize(50 * volumeConfiguration.BigBrickSize[0] * volumeConfiguration.BigBrickSize[1] * volumeConfiguration.BigBrickSize[2]);
-        _bigBrickCoords.resize(50);
+        _bigBrickIndexes.resize(_nbMaxRequests * volumeConfiguration.BigBrickSize[0] * volumeConfiguration.BigBrickSize[1] * volumeConfiguration.BigBrickSize[2]);
+        _bigBrickCoords.resize(_nbMaxRequests);
         _brickSize = volumeConfiguration.BrickSize;
         _bigBrickSize = volumeConfiguration.BigBrickSize;
         _newRequest = false;
@@ -327,8 +327,8 @@ namespace gpucache
                     ++nbBigBrickAdded;
                     //add it to the map as non empty brick
                     bricksAlreadyAsked.insert({ coordinateBigBrick, cptMap });
-                    if (_nbNonEmptyBricks > 50)
-                        assert(false && "Bricks number exceed the request buffer size ! We need to handle this according to the CacheManager::create_request_list()!!!!!! RequestHandler.hpp handle_request()"); //We need to handle this !!!!!!
+                    if (_nbNonEmptyBricks > _nbMaxRequests)
+                        assert(false && "Bricks number exceed the request buffer size ! RequestHandler.hpp handle_request()");
                     _bigBrickIndexes[_nbNonEmptyBricks] = cptMap;
                     _bigBrickCoords[cptMap] = coordinateBigBrick;
                     cptMap++;
