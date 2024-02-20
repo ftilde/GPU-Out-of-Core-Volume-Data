@@ -88,7 +88,7 @@ namespace common
 
     //---------------------------------------------------------------------------------------------
     template<typename T>
-    Texture3dDevice<T>::Texture3dDevice(const tdns::common::Surface3dDevice<T> &surface,
+    inline Texture3dDevice<T>::Texture3dDevice(const tdns::common::Surface3dDevice<T> &surface,
         const tdns::math::Vector3ui &size,
         const tdns::math::Vector3ui &elementSize,
         uint32_t flag /* = 0 */)
@@ -116,7 +116,46 @@ namespace common
             case AccessMode::Normalized:
             {
                 texDesc.filterMode       = cudaFilterModeLinear;
-                texDesc.readMode         = cudaReadModeNormalizedFloat;
+                texDesc.readMode         = cudaReadModeNormalizedFloat; // only for 8-bit and 16-bit integer format, not for float
+                texDesc.normalizedCoords = 1;
+                break;
+            }
+        }
+
+        CUDA_SAFE_CALL(cudaCreateTextureObject(&_texture, &resDesc, &texDesc, NULL));
+    }
+
+    //---------------------------------------------------------------------------------------------
+    // Template specification for 32-bit float format : does not support cudaTextureDesc readMode "cudaReadModeNormalizedFloat"
+    template<>
+    inline Texture3dDevice<float1>::Texture3dDevice(const tdns::common::Surface3dDevice<float1> &surface,
+        const tdns::math::Vector3ui &size,
+        const tdns::math::Vector3ui &elementSize,
+        uint32_t flag /* = 0 */)
+    {
+        _size.x = size[0] * elementSize[0];
+        _size.y = size[1] * elementSize[1];
+        _size.z = size[2] * elementSize[2];
+
+        // Specify texture
+        struct cudaResourceDesc resDesc;
+        std::memset(&resDesc, 0, sizeof(resDesc));
+        resDesc.resType = cudaResourceTypeArray;
+        resDesc.res.array.array = surface.get_array();
+
+        // Specify texture object parameters
+        struct cudaTextureDesc texDesc;
+        std::memset(&texDesc, 0, sizeof(texDesc));
+        texDesc.addressMode[0]   = cudaAddressModeClamp;
+        texDesc.addressMode[1]   = cudaAddressModeClamp;
+        switch(flag)
+        {
+            default:
+                texDesc.readMode         = cudaReadModeElementType;
+                break;
+            case AccessMode::Normalized:
+            {
+                texDesc.filterMode       = cudaFilterModeLinear;
                 texDesc.normalizedCoords = 1;
                 break;
             }
