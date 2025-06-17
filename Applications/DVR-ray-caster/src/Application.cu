@@ -20,12 +20,12 @@ namespace tdns
 namespace app
 {
     //---------------------------------------------------------------------------------------------
-    bool Application::init() const
+    bool Application::init(const std::string& cfg_file) const
     {
         tdns::data::Configuration &conf = tdns::data::Configuration::get_instance();
 
         // Load configuration file
-        conf.load<tdns::data::TDNSConfigurationParser>("config/config_skull.cfg");
+        conf.load<tdns::data::TDNSConfigurationParser>(cfg_file);
 
         if (!data_folder_check())
             return false;
@@ -41,7 +41,7 @@ namespace app
     }
 
     //---------------------------------------------------------------------------------------------
-    void Application::run()
+    void Application::run(const std::string& cfg_file)
     {
         tdns::data::Configuration &conf = tdns::data::Configuration::get_instance();
         std::string volumeDirectory;
@@ -71,7 +71,7 @@ namespace app
 
         // Determine the configuration file of the volume(s) to visualize
         std::vector<tdns::data::VolumeConfiguration> volumeConfigurations(1); // only one volume here
-        volumeConfigurations[0] = tdns::data::load_volume_configuration("config/config_skull.cfg");
+        volumeConfigurations[0] = tdns::data::load_volume_configuration(cfg_file);
 
         // Cache configuration (size) 
         // (here we use only one level of pagination)

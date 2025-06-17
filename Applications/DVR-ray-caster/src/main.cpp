@@ -1,3 +1,5 @@
+#include <cstdlib>
+#include <iostream>
 #include <thread>
 #include <GcCore/libCommon/CppNorm.hpp>
 #include <GcCore/libCommon/FileSystem.hpp>
@@ -10,6 +12,14 @@
 int main(int argc, char **argv)
 {
     tdns::common::LoggerFormatterFileStd log_formatter;
+
+    if(argc != 2) {
+        std::cout << "Usage ./main [cfg_file]" << std::endl;
+        exit(123);
+    }
+
+    std::string cfg_file { argv[1] };
+
     try
     {
         //init the logger
@@ -18,13 +28,13 @@ int main(int argc, char **argv)
         tdns::common::Logger::get_instance().open("./log/3dns", log_formatter, true);
         //start the app !
         tdns::app::Application app;
-        if (!app.init())
+        if (!app.init(cfg_file))
         {
             LOGFATAL(10, "Error while initializing the application.");
         }
         else
         {
-            app.run();
+            app.run(cfg_file);
         }
     }
     catch (const std::exception &ex)

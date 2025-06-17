@@ -1,6 +1,7 @@
 #pragma once
 
 #include <GcCore/libData/MetaData.hpp>
+#include <string>
 
 namespace tdns
 {
@@ -20,12 +21,12 @@ namespace app
         *
         * @return True if all is good, false otherwise.
         */
-        bool init() const;
+        bool init(const std::string& cfg) const;
 
         /**
         * @brief Start the application.
         */
-        void run();
+        void run(const std::string& cfg);
 
     protected:
 
