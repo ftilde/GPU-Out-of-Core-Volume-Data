@@ -141,7 +141,7 @@ namespace gpucache
             mrpd.set(level, position, make_uint4(0, 0, 0, 0));
 
         // For morpho math : reset the entries corresponding to all the voxels of the removed brick in the flag buffer to 0
-        manager.reset_data_cache_buffer_entries(level, position);
+        //manager.reset_data_cache_buffer_entries(level, position);
     }
 
     //---------------------------------------------------------------------------------------------------

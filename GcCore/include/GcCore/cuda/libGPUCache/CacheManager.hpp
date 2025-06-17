@@ -109,7 +109,7 @@ namespace gpucache
         std::unique_ptr<CacheDevice<T>>                                 _dataCache;             ///<
         std::vector<std::unique_ptr<CacheDevice<uint4>>>                _tableCaches;           ///<
         std::unique_ptr<tdns::common::DynamicArray3dDevice<uint32_t>>   _requestBuffer;         ///<
-        std::unique_ptr<tdns::common::DynamicArray3dDevice<uint8_t>>    _dataCacheMask;         ///<
+        //std::unique_ptr<tdns::common::DynamicArray3dDevice<uint8_t>>    _dataCacheMask;         ///<
         std::unique_ptr<RequestHandler<T>>                              _requestHandler;        ///<
         size_t                                                          _nbMaxRequests;         ///<
         tdns::math::Vector3f                                            _oneOverBrickSize;      ///<
@@ -252,7 +252,7 @@ namespace gpucache
         // size[0] = size[1] = size[2] = 0;
         
         // As many entry as voxel in the dataCache
-        _dataCacheMask = tdns::common::create_unique_ptr<tdns::common::DynamicArray3dDevice<uint8_t>>(size, 0);
+        //_dataCacheMask = tdns::common::create_unique_ptr<tdns::common::DynamicArray3dDevice<uint8_t>>(size, 0);
 
         // Create a tableCache array (pointer) for the K_CacheManager.
         CUDA_SAFE_CALL(cudaMalloc(&_k_tableCache, _tableCaches.size() * sizeof(K_CacheDevice<uint4>)));
@@ -311,7 +311,7 @@ namespace gpucache
                 cudaMemcpyHostToDevice));
         }
 
-        return K_CacheManager<T>(*_mrpd, *_dataCache, _k_tableCache, nbtableCaches, *_requestBuffer, *_dataCacheMask, *_initialOverRealSize, _timestamp, _brickSize[0], _covering[0]);
+        return K_CacheManager<T>(*_mrpd, *_dataCache, _k_tableCache, nbtableCaches, *_requestBuffer, /**_dataCacheMask,*/ *_initialOverRealSize, _timestamp, _brickSize[0], _covering[0]);
     }
 
     //---------------------------------------------------------------------------------------------------
@@ -530,7 +530,12 @@ namespace gpucache
             // Dereference the bricks that will be remove.
             dereference_old_bricks<<<nbBlocks, nbThreadsPerBlock>>>(this->to_kernel_object(), endDataCacheLRUpositions, nbNonEmptyBricks);
 #if TDNS_MODE == TDNS_MODE_DEBUG
-            CUDA_SAFE_CALL(cudaDeviceSynchronize());
+            try {
+                CUDA_SAFE_CALL(cudaDeviceSynchronize());
+            } catch(std::exception& e) {
+                std::cout << e.what() << std::endl;
+                exit(124);
+            }
 #endif
             CUDA_CHECK_KERNEL_ERROR();
         }

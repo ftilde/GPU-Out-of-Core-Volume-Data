@@ -43,7 +43,7 @@ namespace gpucache
                         K_CacheDevice<uint4> *tableCaches,
                         size_t nbTableCaches,
                         tdns::common::DynamicArray3dDevice<uint32_t> &requestBuffer,
-                        tdns::common::DynamicArray3dDevice<uint8_t> &dataCacheMask,
+                        //tdns::common::DynamicArray3dDevice<uint8_t> &dataCacheMask,
                         tdns::common::DynamicArray3dDevice<float3> &initialOverRealSize,
                         uint32_t timeStamp,
                         uint32_t brickSize,
@@ -122,7 +122,7 @@ namespace gpucache
         uint32_t                                        _covering;              ///<
         uint32_t                                        _brickSize;             ///<
         tdns::common::K_DynamicArray3dDevice<uint32_t>  _requestBuffer;         ///<
-        tdns::common::K_DynamicArray3dDevice<uint8_t>   _dataCacheMask;         ///<
+        //tdns::common::K_DynamicArray3dDevice<uint8_t>   _dataCacheMask;         ///<
         tdns::common::K_DynamicArray3dDevice<float3>    _initialOverRealSize;   ///<
         K_CacheDevice<uint4>                            *_tableCaches;          ///<
         K_CacheDevice<T>                                _dataCache;             ///<
@@ -139,7 +139,7 @@ namespace gpucache
                                     K_CacheDevice<uint4> *tableCaches,
                                     size_t nbTableCaches,
                                     tdns::common::DynamicArray3dDevice<uint32_t> &requestBuffer,
-                                    tdns::common::DynamicArray3dDevice<uint8_t> &dataCacheMask,
+                                    //tdns::common::DynamicArray3dDevice<uint8_t> &dataCacheMask,
                                     tdns::common::DynamicArray3dDevice<float3> &initialOverRealSize,
                                     uint32_t timeStamp,
                                     uint32_t brickSize,
@@ -147,7 +147,7 @@ namespace gpucache
     : _mrpd(mrpd.to_kernel_object()), _dataCache(dataCache.to_kernel_object())
     {
         _requestBuffer  = requestBuffer.to_kernel_object();
-        _dataCacheMask  = dataCacheMask.to_kernel_object();
+        //_dataCacheMask  = dataCacheMask.to_kernel_object();
         _initialOverRealSize = initialOverRealSize.to_kernel_object();
         _tableCaches    = tableCaches;
         _timeStamp      = timeStamp;
@@ -396,37 +396,37 @@ namespace gpucache
     }
 
     //---------------------------------------------------------------------------------------------------
-    template<typename T>
-    inline __device__ void K_CacheManager<T>::reset_data_cache_buffer_entries(uint32_t level, const float3 &position)
-    {
-        uint3 brickPosition = compute_element_position(level, position);
+    //template<typename T>
+    //inline __device__ void K_CacheManager<T>::reset_data_cache_buffer_entries(uint32_t level, const float3 &position)
+    //{
+    //    uint3 brickPosition = compute_element_position(level, position);
 
-        for(uint32_t x = 0; x < _brickSize; ++x)
-        for(uint32_t y = 0; y < _brickSize; ++y)
-        for(uint32_t z = 0; z < _brickSize; ++z)
-        {
-            uint3 position = make_uint3(brickPosition.x + x, brickPosition.y + y, brickPosition.z + z);
-            _dataCacheMask(position) = 0;
-        }
-    }
-
-    //---------------------------------------------------------------------------------------------------
-    template<typename T>
-    inline __device__ uint8_t K_CacheManager<T>::get_data_cache_buffer_entry(uint32_t level, const float3 &position)
-    {
-        uint3 elementPosition = compute_element_position(level, position);
-        
-        return _dataCacheMask(elementPosition);
-    }
+    //    for(uint32_t x = 0; x < _brickSize; ++x)
+    //    for(uint32_t y = 0; y < _brickSize; ++y)
+    //    for(uint32_t z = 0; z < _brickSize; ++z)
+    //    {
+    //        uint3 position = make_uint3(brickPosition.x + x, brickPosition.y + y, brickPosition.z + z);
+    //    }
+    //    _dataCacheMask(brickPosition) = 0;
+    //}
 
     //---------------------------------------------------------------------------------------------------
-    template<typename T>
-    inline __device__ void K_CacheManager<T>::set_data_cache_buffer_entry(uint32_t level, const float3 &position, const uint8_t value)
-    {
-        uint3 elementPosition = compute_element_position(level, position);
+    //template<typename T>
+    //inline __device__ uint8_t K_CacheManager<T>::get_data_cache_buffer_entry(uint32_t level, const float3 &position)
+    //{
+    //    uint3 elementPosition = compute_element_position(level, position);
+    //    
+    //    return _dataCacheMask(elementPosition);
+    //}
 
-        _dataCacheMask(elementPosition) = value;
-    }
+    //---------------------------------------------------------------------------------------------------
+    //template<typename T>
+    //inline __device__ void K_CacheManager<T>::set_data_cache_buffer_entry(uint32_t level, const float3 &position, const uint8_t value)
+    //{
+    //    uint3 elementPosition = compute_element_position(level, position);
+
+    //    _dataCacheMask(elementPosition) = value;
+    //}
 
     //---------------------------------------------------------------------------------------------------
     template<typename T>
