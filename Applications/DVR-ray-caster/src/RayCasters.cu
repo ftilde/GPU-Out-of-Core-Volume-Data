@@ -125,6 +125,113 @@ namespace graphics
         pixelBuffer[i] = rgbaFloatToInt(finalColor);
     }
 
+    __global__ void RayCastMOP(uint32_t *pixelBuffer,
+                            cudaTextureObject_t tfTex,
+                            uint2 screenSize,
+                            uint32_t renderScreenWidth,
+                            float fov,
+                            float3 bboxMin, float3 bboxMax,
+                            int32_t steps, float tstep,
+                            tdns::gpucache::K_CacheManager<uchar1> manager,
+                            float3 *invLevelsSize,
+                            uint3 *levelsSize,
+                            float3 *LODBrickSize,
+                            float *LODStepSize,
+                            size_t seed)
+    {
+        // 2D Thread ID
+        uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
+        uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
+
+        if (x > screenSize.x || y > screenSize.y) return;
+
+        // Transform the 2D screen coords into [-1; 1] range
+        float u = ((x + 0.5f) / (float) screenSize.x) * 2.0f - 1.0f;
+        float v = ((y + 0.5f) / (float) screenSize.y) * 2.0f - 1.0f;
+
+        // calculate eye ray in world space
+        float3 origin = make_float3(mul(d_invModelViewMatrix, make_float4(0.0f, 0.0f, 0.0f, 1.0f)));
+        float3 direction = normalize(make_float3(u, v, -2.f));
+        direction = mul(d_invModelViewMatrix, direction);
+
+        // find intersection with box
+        float tnear, tfar;
+        int32_t intersected = intersectBox(origin, direction, bboxMin, bboxMax, &tnear, &tfar);
+        
+        const float3 bgColor = {0.f, 0.f, 0.f};
+        float4 finalColor = {0.f, 0.f, 0.f, 0.f};
+
+        if (!intersected)
+        {
+            finalColor.x = bgColor.x;
+            finalColor.y = bgColor.y;
+            finalColor.z = bgColor.z;
+        }
+        else
+        {
+            if (tnear < 0.f) tnear = 0.f;          // clamp to near plane
+
+            float t = tnear;
+            float3 position = origin + direction * tnear;
+            float3 step;
+            // float3 step = direction * tstep;
+            float maxOpacity = 0.0;
+            float sample;
+            float3 texturePosition = {0.f, 0.f, 0.f};
+            float3 normalizedPosition = {0.f, 0.f, 0.f};
+
+            // Print the bouding box edges in red
+            // print_bb_edges(bboxMin, bboxMax, position, finalColor);
+            
+            // march along ray from front to back, accumulating color
+            while (t < tfar)
+            {
+                // Transform the [-1; 1] world position into a [0; 0.99[ range volume coords for the texture.
+                texturePosition = position * 0.495f + 0.495f;
+                texturePosition.z = 1 - texturePosition.z;
+
+                // sampling
+                normalizedPosition = clamp(texturePosition, 0.f, 0.99f);
+                uint32_t lod = compute_LOD(t, 4, levelsSize, LODBrickSize);
+                tdns::gpucache::VoxelStatus voxelStatus = manager.get_normalized<float>(lod, normalizedPosition, sample);
+
+                // Handle Unmapped and Empty bricks
+                if (voxelStatus == tdns::gpucache::VoxelStatus::Empty || voxelStatus == tdns::gpucache::VoxelStatus::Unmapped)
+                {
+                    float3 brickSize = LODBrickSize[lod];
+                    t += brickSize.x;
+                    if (t > tfar)
+                        break;
+                    position += direction * brickSize.x;
+                    continue;
+                }
+
+                maxOpacity = max(maxOpacity, sample);
+
+                // color.w = 1.f - powf(1.f - color.w, tstep / tstep);
+
+                // add the step size according to the LOD of the current sample
+                t += LODStepSize[lod];
+                // t += tstep;
+                
+                // use the step size according to the LOD of the current sample
+                step = direction * LODStepSize[lod];
+                // step = direction * tstep;
+                position += step;
+                    
+            }
+
+            // classification
+            finalColor = tex1D<float4>(tfTex, maxOpacity);
+        }
+
+        // Brightness
+        // finalColor *= 1.5f;
+
+        uint32_t i = y * screenSize.x + x;
+        pixelBuffer[i] = rgbaFloatToInt(finalColor);
+    }
+
     //---------------------------------------------------------------------------------------------
     __global__ void RayCast(uint32_t *pixelBuffer,
                             cudaTextureObject_t tfTex,

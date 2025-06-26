@@ -27,6 +27,12 @@ namespace tdns
 {
 namespace graphics
 {
+
+    enum class CompositingMode {
+        DVR,
+        MOP,
+    };
+
     //---------------------------------------------------------------------------------------------
     template<typename T>
     void display(   SDLGLWindow &window,
@@ -41,7 +47,9 @@ namespace graphics
                     float3 *d_invLevelsSize,
                     float3 *d_LODBrickSize,
                     float *d_LODStepSize,
-                    std::vector<float> &histo);
+                    std::vector<float> &histo,
+                    CompositingMode compositingMode
+                    );
 
     template<typename T>
     void get_frame( uint32_t *d_pixelBuffer,
@@ -54,7 +62,9 @@ namespace graphics
                     uint3 *d_levelsSize,
                     float3 *d_invLevelsSize,
                     float3 *d_LODBrickSize,
-                    float *d_LODStepSize);
+                    float *d_LODStepSize,
+                    CompositingMode compositingMode
+                    );
 
     //---------------------------------------------------------------------------------------------
     void display_volume_raycaster(tdns::gpucache::CacheManager<uchar1> *manager, tdns::data::MetaData &volumeData)
@@ -68,6 +78,17 @@ namespace graphics
         conf.get_field("VolumeDirectory", volumeDirectory);
         uint32_t brickSize;
         conf.get_field("BrickSize", brickSize);
+        std::string compositing;
+        conf.get_field("Compositing", compositing);
+        CompositingMode compositingMode;
+        if(compositing == "MOP") {
+            compositingMode = CompositingMode::MOP;
+        } else if(compositing == "DVR") {
+            compositingMode = CompositingMode::DVR;
+        } else {
+            std::cout << "Invalid compositing mode '" << compositing << "'" << std::endl;
+            exit(124);
+        }
         
         // Init SDL
         create_sdl_context(SDL_INIT_EVERYTHING);
@@ -141,7 +162,7 @@ namespace graphics
         /* --------------------------------------------------------------------------------------------------------------------- */
 
         /*********************** CALL THE DISPLAY FUNCTION ***********************/
-        display(sdlWindow, shader, screenSize, bboxmin, bboxmax, marchingStep, tf, volumeData, manager, d_levelsSize, d_invLevelsSize, d_LODBrickSize, d_LODStepSize, histo);
+        display(sdlWindow, shader, screenSize, bboxmin, bboxmax, marchingStep, tf, volumeData, manager, d_levelsSize, d_invLevelsSize, d_LODBrickSize, d_LODStepSize, histo, compositingMode);
     }
 
     //---------------------------------------------------------------------------------------------
@@ -158,7 +179,9 @@ namespace graphics
                     float3 *d_invLevelsSize,
                     float3 *d_LODBrickSize,
                     float *d_LODStepSize,
-                    std::vector<float> &histo)
+                    std::vector<float> &histo,
+                    CompositingMode compositingMode
+                    )
     {
         // Init pixel buffer object and CUDA-OpenGL interoperability ressources
         uint32_t pbo, vbo, vao, texture;
@@ -199,7 +222,7 @@ namespace graphics
         
         // model-view matrix
         float3 viewRotation;
-        float3 viewTranslation = make_float3(0.0, 0.0, -15.0f);
+        float3 viewTranslation = make_float3(0.0, 0.0, -2.0f);
         float invViewMatrix[12];
         
         bool run = true;
@@ -221,7 +244,7 @@ namespace graphics
 
             // update_CUDA_inv_view_model_matrix(viewMatrix, modelMatrix);
             update_CUDA_inv_view_model_matrix(invViewMatrix);
-            get_frame(d_pixelBuffer, tfTex, screenSize, bboxmin, bboxmax, marchingStep, manager, camera, d_levelsSize,d_invLevelsSize, d_LODBrickSize, d_LODStepSize);
+            get_frame(d_pixelBuffer, tfTex, screenSize, bboxmin, bboxmax, marchingStep, manager, camera, d_levelsSize,d_invLevelsSize, d_LODBrickSize, d_LODStepSize, compositingMode);
 
             // Bind VAO
             glBindVertexArray(vao);
@@ -295,7 +318,9 @@ namespace graphics
                     uint3 *d_levelsSize,
                     float3 *d_invLevelsSize,
                     float3 *d_LODBrickSize,
-                    float *d_LODStepSize)
+                    float *d_LODStepSize,
+                    CompositingMode compositingMode
+                    )
     {
         dim3 gridDim = dim3((screenSize[0] % 16 != 0) ? (screenSize[0] / 16 + 1) : (screenSize[0] / 16), (screenSize[1] % 16 != 0) ? (screenSize[1] / 16 + 1) : (screenSize[1] / 16));
         dim3 blockDim(16, 16);
@@ -305,20 +330,40 @@ namespace graphics
         // float theta = tan(camera.get_fov() / 2.f * M_PI / 180.0f);
 
         // cudaProfilerStart();
-        RayCast<<<gridDim, blockDim>>>(
-            d_pixelBuffer,
-            tfTex,
-            *reinterpret_cast<const uint2*>(screenSize.data()),
-            renderScreenWidth,
-            camera.get_fov(),
-            *reinterpret_cast<const float3*>(bboxmin.data()), *reinterpret_cast<const float3*>(bboxmax.data()),
-            1024, marchingStep, //1000, 0.0015f    sampleMax, stepSize
-            manager->to_kernel_object(),
-            d_invLevelsSize,
-            d_levelsSize,
-            d_LODBrickSize,
-            d_LODStepSize,
-            time(0));
+        switch(compositingMode) {
+            case CompositingMode::DVR:
+                RayCast<<<gridDim, blockDim>>>(
+                    d_pixelBuffer,
+                    tfTex,
+                    *reinterpret_cast<const uint2*>(screenSize.data()),
+                    renderScreenWidth,
+                    camera.get_fov(),
+                    *reinterpret_cast<const float3*>(bboxmin.data()), *reinterpret_cast<const float3*>(bboxmax.data()),
+                    1024, marchingStep, //1000, 0.0015f    sampleMax, stepSize
+                    manager->to_kernel_object(),
+                    d_invLevelsSize,
+                    d_levelsSize,
+                    d_LODBrickSize,
+                    d_LODStepSize,
+                    time(0));
+                break;
+            case CompositingMode::MOP:
+                RayCastMOP<<<gridDim, blockDim>>>(
+                    d_pixelBuffer,
+                    tfTex,
+                    *reinterpret_cast<const uint2*>(screenSize.data()),
+                    renderScreenWidth,
+                    camera.get_fov(),
+                    *reinterpret_cast<const float3*>(bboxmin.data()), *reinterpret_cast<const float3*>(bboxmax.data()),
+                    1024, marchingStep, //1000, 0.0015f    sampleMax, stepSize
+                    manager->to_kernel_object(),
+                    d_invLevelsSize,
+                    d_levelsSize,
+                    d_LODBrickSize,
+                    d_LODStepSize,
+                    time(0));
+                break;
+        }
         // cudaProfilerStop();
 
 #if TDNS_MODE == TDNS_MODE_DEBUG
