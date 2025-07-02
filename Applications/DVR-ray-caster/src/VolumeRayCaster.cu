@@ -261,7 +261,10 @@ namespace graphics
 
             glDrawArrays(GL_TRIANGLES, 0, 6);
 
+#if TDNS_MODE != TDNS_MODE_DEBUG
+            // IMGUI crashes in debug mode for some reason
             render_gui(window, bgColor, bboxmin, bboxmax, histo, histoSize, tf);
+#endif
 
             // Swap buffer
             window.display();
