@@ -158,7 +158,7 @@ namespace gpucache
                     tmp.cachePosition = make_uint3(x * blockSize[0], y * blockSize[1], z * blockSize[2]);
                     tmp.volumePosition = make_float3(-1.f, -1.f, -1.f);
                     tmp.level = 0;
-                    _lru[x + y * cacheSize[1] + z * xy] = tmp;
+                    _lru[x + y * cacheSize[0] + z * xy] = tmp;
 
                     // _lru[x + y * cacheSize[1] + z * xy].cachePosition = 
                     //     make_uint3(x * blockSize[0], y * blockSize[1], z * blockSize[2]);
