@@ -26,7 +26,7 @@ namespace graphics
 
     __constant__ float4x3 d_invModelViewMatrix;  // inverse model*view matrix
 
-    __global__ void TDNS_API RayCast(uint32_t *pixelBuffer,
+    __global__ void TDNS_API RayCastDVR(uint32_t *pixelBuffer,
                             cudaTextureObject_t tfTex,
                             uint2 screenSize,
                             uint32_t renderScreenWidth,
@@ -34,6 +34,34 @@ namespace graphics
                             float3 bboxMin, float3 bboxMax,
                             int32_t steps, float tstep,
                             tdns::gpucache::K_CacheManager<uchar1> manager,
+                            float3 *invLevelsSize,
+                            uint3 *levelsSize,
+                            float3 *LODBrickSize,
+                            float *LODStepSize,
+                            size_t seed);
+
+    __global__ void TDNS_API RayCastDVR(uint32_t *pixelBuffer,
+                            cudaTextureObject_t tfTex,
+                            uint2 screenSize,
+                            uint32_t renderScreenWidth,
+                            float fov,
+                            float3 bboxMin, float3 bboxMax,
+                            int32_t steps, float tstep,
+                            tdns::gpucache::K_CacheManager<ushort1> manager,
+                            float3 *invLevelsSize,
+                            uint3 *levelsSize,
+                            float3 *LODBrickSize,
+                            float *LODStepSize,
+                            size_t seed);
+
+    __global__ void TDNS_API RayCastDVR(uint32_t *pixelBuffer,
+                            cudaTextureObject_t tfTex,
+                            uint2 screenSize,
+                            uint32_t renderScreenWidth,
+                            float fov,
+                            float3 bboxMin, float3 bboxMax,
+                            int32_t steps, float tstep,
+                            tdns::gpucache::K_CacheManager<float1> manager,
                             float3 *invLevelsSize,
                             uint3 *levelsSize,
                             float3 *LODBrickSize,
@@ -54,7 +82,7 @@ namespace graphics
                             float *LODStepSize,
                             size_t seed);
 
-    __global__ void TDNS_API RayCast(uint32_t *pixelBuffer,
+    __global__ void TDNS_API RayCastMOP(uint32_t *pixelBuffer,
                             cudaTextureObject_t tfTex,
                             uint2 screenSize,
                             uint32_t renderScreenWidth,
@@ -68,7 +96,7 @@ namespace graphics
                             float *LODStepSize,
                             size_t seed);
 
-    __global__ void TDNS_API RayCast(uint32_t *pixelBuffer,
+    __global__ void TDNS_API RayCastMOP(uint32_t *pixelBuffer,
                             cudaTextureObject_t tfTex,
                             uint2 screenSize,
                             uint32_t renderScreenWidth,

@@ -332,7 +332,7 @@ namespace graphics
         // cudaProfilerStart();
         switch(compositingMode) {
             case CompositingMode::DVR:
-                RayCast<<<gridDim, blockDim>>>(
+                RayCastDVR<<<gridDim, blockDim>>>(
                     d_pixelBuffer,
                     tfTex,
                     *reinterpret_cast<const uint2*>(screenSize.data()),

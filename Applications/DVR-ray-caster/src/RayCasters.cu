@@ -7,15 +7,15 @@ namespace tdns
 {
 namespace graphics
 {
-    //---------------------------------------------------------------------------------------------
-    __global__ void RayCast(uint32_t *pixelBuffer,
+    template<typename T>
+    __device__ void RayCastDVRImpl(uint32_t *pixelBuffer,
                             cudaTextureObject_t tfTex,
                             uint2 screenSize,
                             uint32_t renderScreenWidth,
                             float fov,
                             float3 bboxMin, float3 bboxMax,
                             int32_t steps, float tstep,
-                            tdns::gpucache::K_CacheManager<uchar1> manager,
+                            tdns::gpucache::K_CacheManager<T> manager,
                             float3 *invLevelsSize,
                             uint3 *levelsSize,
                             float3 *LODBrickSize,
@@ -76,7 +76,7 @@ namespace graphics
                 // sampling
                 normalizedPosition = clamp(texturePosition, 0.f, 0.99f);
                 uint32_t lod = compute_LOD(t, 4, levelsSize, LODBrickSize);
-                tdns::gpucache::VoxelStatus voxelStatus = manager.get_normalized<float>(lod, normalizedPosition, sample);
+                tdns::gpucache::VoxelStatus voxelStatus = manager.template get_normalized<float>(lod, normalizedPosition, sample);
 
                 // Handle Unmapped and Empty bricks
                 if (voxelStatus == tdns::gpucache::VoxelStatus::Empty || voxelStatus == tdns::gpucache::VoxelStatus::Unmapped)
@@ -125,14 +125,15 @@ namespace graphics
         pixelBuffer[i] = rgbaFloatToInt(finalColor);
     }
 
-    __global__ void RayCastMOP(uint32_t *pixelBuffer,
+    template<typename T>
+    __device__ void RayCastMOPImpl(uint32_t *pixelBuffer,
                             cudaTextureObject_t tfTex,
                             uint2 screenSize,
                             uint32_t renderScreenWidth,
                             float fov,
                             float3 bboxMin, float3 bboxMax,
                             int32_t steps, float tstep,
-                            tdns::gpucache::K_CacheManager<uchar1> manager,
+                            tdns::gpucache::K_CacheManager<T> manager,
                             float3 *invLevelsSize,
                             uint3 *levelsSize,
                             float3 *LODBrickSize,
@@ -193,7 +194,7 @@ namespace graphics
                 // sampling
                 normalizedPosition = clamp(texturePosition, 0.f, 0.99f);
                 uint32_t lod = compute_LOD(t, 4, levelsSize, LODBrickSize);
-                tdns::gpucache::VoxelStatus voxelStatus = manager.get_normalized<float>(lod, normalizedPosition, sample);
+                tdns::gpucache::VoxelStatus voxelStatus = manager.template get_normalized<float>(lod, normalizedPosition, sample);
 
                 // Handle Unmapped and Empty bricks
                 if (voxelStatus == tdns::gpucache::VoxelStatus::Empty || voxelStatus == tdns::gpucache::VoxelStatus::Unmapped)
@@ -232,8 +233,24 @@ namespace graphics
         pixelBuffer[i] = rgbaFloatToInt(finalColor);
     }
 
-    //---------------------------------------------------------------------------------------------
-    __global__ void RayCast(uint32_t *pixelBuffer,
+    /// DVR ------------------------------------------------------------------------
+    __global__ void RayCastDVR(uint32_t *pixelBuffer,
+                            cudaTextureObject_t tfTex,
+                            uint2 screenSize,
+                            uint32_t renderScreenWidth,
+                            float fov,
+                            float3 bboxMin, float3 bboxMax,
+                            int32_t steps, float tstep,
+                            tdns::gpucache::K_CacheManager<uchar1> manager,
+                            float3 *invLevelsSize,
+                            uint3 *levelsSize,
+                            float3 *LODBrickSize,
+                            float *LODStepSize,
+                            size_t seed)
+    {
+        RayCastDVRImpl(pixelBuffer, tfTex, screenSize, renderScreenWidth, fov, bboxMin, bboxMax, steps, tstep, manager, invLevelsSize, levelsSize, LODBrickSize, LODStepSize, seed);
+    }
+    __global__ void RayCastDVR(uint32_t *pixelBuffer,
                             cudaTextureObject_t tfTex,
                             uint2 screenSize,
                             uint32_t renderScreenWidth,
@@ -247,115 +264,9 @@ namespace graphics
                             float *LODStepSize,
                             size_t seed)
     {
-        // 2D Thread ID
-        uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
-        uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
-
-        if (x >= renderScreenWidth || y >= screenSize.y) return;
-
-        // Transform the 2D screen coords into [-1; 1] range
-        float u = (((x + 0.5f) / (float) renderScreenWidth) * 2.0f - 1.0f) * tan(fov / 2);
-        float v = (((y + 0.5f) / (float) screenSize.y) * 2.0f - 1.0f) * tan(fov / 2);
-
-        // calculate eye ray in world space
-        float3 origin = make_float3(mul(d_invModelViewMatrix, make_float4(0.0f, 0.0f, 0.0f, 1.0f)));
-        float3 direction = normalize(make_float3(u, v, -2.f)); // u, v : pixel position in the image plan, -2.f : distance from camera to image plan
-        direction = mul(d_invModelViewMatrix, direction);  // then apply the model view matrix
-
-        // find intersection with box
-        float tnear, tfar;
-        int32_t intersected = intersectBox(origin, direction, bboxMin, bboxMax, &tnear, &tfar);
-        
-        const float4 bgColor = {0.f, 0.f, 0.f, 0.f};
-        float4 finalColor = {0.0f, 0.0f, 0.0f, 0.0f};
-
-        if (!intersected)
-        {
-            finalColor.x = bgColor.x;
-            finalColor.y = bgColor.y;
-            finalColor.z = bgColor.z;
-            finalColor.w = bgColor.w;
-        }
-        else
-        {   
-            if (tnear < 0.0f) tnear = 0.0f;          // clamp to near plane
-
-            float t = tnear;
-            float3 position = origin + direction * tnear;
-            float3 step;
-            // float3 step = direction * tstep;
-            float sample;
-            float4 color = {0.f, 0.f, 0.f, 0.f};
-            float3 texturePosition = {0.f, 0.f, 0.f};
-            float3 normalizedPosition = {0.f, 0.f, 0.f};
-
-            // Print the bouding box edges in red
-            print_bb_edges(bboxMin, bboxMax, position, finalColor);
-            
-            // march along ray from front to back, accumulating color
-            for (int32_t i = 0; i < steps; ++i)
-            {
-                // Transform the [-1; 1] world position into a [0; 0.99[ range volume coords for the cache texture
-                texturePosition = position * 0.495f + 0.495f;
-                texturePosition.z = 1 - texturePosition.z;
-
-                // sampling
-                normalizedPosition = clamp(texturePosition, 0.f, 0.99f);
-                uint32_t lod = compute_LOD(t, 4, levelsSize, LODBrickSize);
-                tdns::gpucache::VoxelStatus voxelStatus = manager.get_normalized<float>(lod, normalizedPosition, sample);
-                
-                // Handle Unmapped and Empty bricks
-                if (voxelStatus == tdns::gpucache::VoxelStatus::Empty || voxelStatus == tdns::gpucache::VoxelStatus::Unmapped)
-                {
-                    float3 brickSize = LODBrickSize[lod];
-                    t += brickSize.x;
-                    if (t > tfar)
-                        break;
-                    position += direction * brickSize.x;
-                    continue;
-                }
-
-                // classification
-                color = tex1D<float4>(tfTex, sample);
-
-                color.w = 1.f - powf(1.f - color.w, LODStepSize[lod] / tstep);
-                // color.w = 1.f - powf(1.f - color.w, tstep / tstep);
-
-                // skip transparent samples
-                if (color.w > 0.001f)
-                {
-                    // pre-multiply alpha
-                    color.x *= color.w;
-                    color.y *= color.w;
-                    color.z *= color.w;
-
-                    // front-to-back blending operator
-                    finalColor += color * (1.0f - finalColor.w);
-                }
-
-                // add the step size according to the LOD of the current sample
-                t += LODStepSize[lod];
-                // t += tstep;
-                
-                // exit early if opaque or if we are outside the volume
-                if (finalColor.w > 0.95f || t > tfar)
-                    break;
-
-                // use the step size according to the LOD of the current sample
-                step = direction * LODStepSize[lod];
-                // step = direction * tstep;
-                position += step;
-            }
-        }
-        // Brightness
-        // finalColor *= 1.5f;
-
-        uint32_t i = y * screenSize.x + x;
-        pixelBuffer[i] = rgbaFloatToInt(finalColor);
+        RayCastDVRImpl(pixelBuffer, tfTex, screenSize, renderScreenWidth, fov, bboxMin, bboxMax, steps, tstep, manager, invLevelsSize, levelsSize, LODBrickSize, LODStepSize, seed);
     }
-
-    //---------------------------------------------------------------------------------------------
-    __global__ void RayCast(uint32_t *pixelBuffer,
+    __global__ void RayCastDVR(uint32_t *pixelBuffer,
                             cudaTextureObject_t tfTex,
                             uint2 screenSize,
                             uint32_t renderScreenWidth,
@@ -369,106 +280,60 @@ namespace graphics
                             float *LODStepSize,
                             size_t seed)
     {
-        // 2D Thread ID
-        uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
-        uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
-
-        if (x > screenSize.x || y > screenSize.y) return;
-
-        // Transform the 2D screen coords into [-1; 1] range
-        float u = ((x + 0.5f) / (float) screenSize.x) * 2.0f - 1.0f;
-        float v = ((y + 0.5f) / (float) screenSize.y) * 2.0f - 1.0f;
-
-        // calculate eye ray in world space
-        float3 origin = make_float3(mul(d_invModelViewMatrix, make_float4(0.0f, 0.0f, 0.0f, 1.0f)));
-        float3 direction = normalize(make_float3(u, v, -2.f));
-        direction = mul(d_invModelViewMatrix, direction);
-
-        // find intersection with box
-        float tnear, tfar;
-        int32_t intersected = intersectBox(origin, direction, bboxMin, bboxMax, &tnear, &tfar);
-        
-        const float3 bgColor = {0.f, 0.f, 0.f};
-        float4 finalColor = {0.f, 0.f, 0.f, 0.f};
-
-        if (!intersected)
-        {
-            finalColor.x = bgColor.x;
-            finalColor.y = bgColor.y;
-            finalColor.z = bgColor.z;
-        }
-        else
-        {
-            if (tnear < 0.f) tnear = 0.f;          // clamp to near plane
-
-            float t = tnear;
-            float3 position = origin + direction * tnear;
-            float3 step;
-            // float3 step = direction * tstep;
-            float sample;
-            float4 color = {0.f, 0.f, 0.f, 0.f};
-            float3 texturePosition = {0.f, 0.f, 0.f};
-            float3 normalizedPosition = {0.f, 0.f, 0.f};
-
-            // Print the bouding box edges in red
-            // print_bb_edges(bboxMin, bboxMax, position, finalColor);
-            
-            // march along ray from front to back, accumulating color
-            while (finalColor.w < 0.95f && t < tfar)
-            {
-                // Transform the [-1; 1] world position into a [0; 0.99[ range volume coords for the texture.
-                texturePosition = position * 0.495f + 0.495f;
-                texturePosition.z = 1 - texturePosition.z;
-
-                // sampling
-                normalizedPosition = clamp(texturePosition, 0.f, 0.99f);
-                uint32_t lod = compute_LOD(t, 5, levelsSize, LODBrickSize);
-                tdns::gpucache::VoxelStatus voxelStatus = manager.get_normalized<float>(lod, normalizedPosition, sample);
-
-                // Handle Unmapped and Empty bricks
-                if (voxelStatus == tdns::gpucache::VoxelStatus::Empty || voxelStatus == tdns::gpucache::VoxelStatus::Unmapped)
-                {
-                    float3 brickSize = LODBrickSize[lod];
-                    t += brickSize.x;
-                    if (t > tfar)
-                        break;
-                    position += direction * brickSize.x;
-                    continue;
-                }
-
-                // classification
-                color = tex1D<float4>(tfTex, sample);
-
-                color.w = 1.f - powf(1.f - color.w, LODStepSize[lod] / tstep);
-
-                // skip transparent samples
-                if (color.w > 0.001f)
-                {
-                    // pre-multiply alpha
-                    color.x *= color.w;
-                    color.y *= color.w;
-                    color.z *= color.w;
-
-                    // front-to-back blending operator
-                    finalColor += color * (1.0f - finalColor.w);
-                }
-
-                // add the step size according to the LOD of the current sample
-                t += LODStepSize[lod];
-                
-                // use the step size according to the LOD of the current sample
-                step = direction * LODStepSize[lod];
-                position += step;
-                    
-            }
-        }
-        // Brightness
-        // finalColor *= 1.5f;
-
-        uint32_t i = y * screenSize.x + x;
-        pixelBuffer[i] = rgbaFloatToInt(finalColor);
+        RayCastDVRImpl(pixelBuffer, tfTex, screenSize, renderScreenWidth, fov, bboxMin, bboxMax, steps, tstep, manager, invLevelsSize, levelsSize, LODBrickSize, LODStepSize, seed);
     }
-    
+
+    /// MOP ------------------------------------------------------------------------
+
+    __global__ void RayCastMOP(uint32_t *pixelBuffer,
+                            cudaTextureObject_t tfTex,
+                            uint2 screenSize,
+                            uint32_t renderScreenWidth,
+                            float fov,
+                            float3 bboxMin, float3 bboxMax,
+                            int32_t steps, float tstep,
+                            tdns::gpucache::K_CacheManager<uchar1> manager,
+                            float3 *invLevelsSize,
+                            uint3 *levelsSize,
+                            float3 *LODBrickSize,
+                            float *LODStepSize,
+                            size_t seed)
+    {
+        RayCastMOPImpl(pixelBuffer, tfTex, screenSize, renderScreenWidth, fov, bboxMin, bboxMax, steps, tstep, manager, invLevelsSize, levelsSize, LODBrickSize, LODStepSize, seed);
+    }
+    __global__ void RayCastMOP(uint32_t *pixelBuffer,
+                            cudaTextureObject_t tfTex,
+                            uint2 screenSize,
+                            uint32_t renderScreenWidth,
+                            float fov,
+                            float3 bboxMin, float3 bboxMax,
+                            int32_t steps, float tstep,
+                            tdns::gpucache::K_CacheManager<ushort1> manager,
+                            float3 *invLevelsSize,
+                            uint3 *levelsSize,
+                            float3 *LODBrickSize,
+                            float *LODStepSize,
+                            size_t seed)
+    {
+        RayCastMOPImpl(pixelBuffer, tfTex, screenSize, renderScreenWidth, fov, bboxMin, bboxMax, steps, tstep, manager, invLevelsSize, levelsSize, LODBrickSize, LODStepSize, seed);
+    }
+    __global__ void RayCastMOP(uint32_t *pixelBuffer,
+                            cudaTextureObject_t tfTex,
+                            uint2 screenSize,
+                            uint32_t renderScreenWidth,
+                            float fov,
+                            float3 bboxMin, float3 bboxMax,
+                            int32_t steps, float tstep,
+                            tdns::gpucache::K_CacheManager<float1> manager,
+                            float3 *invLevelsSize,
+                            uint3 *levelsSize,
+                            float3 *LODBrickSize,
+                            float *LODStepSize,
+                            size_t seed)
+    {
+        RayCastMOPImpl(pixelBuffer, tfTex, screenSize, renderScreenWidth, fov, bboxMin, bboxMax, steps, tstep, manager, invLevelsSize, levelsSize, LODBrickSize, LODStepSize, seed);
+    }
+
     // DEVICE FUNC
 
     //---------------------------------------------------------------------------------------------
