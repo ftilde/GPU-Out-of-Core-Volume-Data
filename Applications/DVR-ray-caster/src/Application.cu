@@ -81,19 +81,42 @@ namespace app
         // (Must be adapted to bricks size, voxels encoding type AND GPU available memory!).
         // (If it's too large, it will cause an [out of memory] error. If it's too small, the cache will fill up quickly and performance will suffer!)
 
-
-        // Create the GPU Cache Manager
-        std::unique_ptr<tdns::gpucache::CacheManager<uchar1>> cacheManager;
         tdns::data::CacheConfiguration cacheConfiguration;
         cacheConfiguration.CacheSize = cacheSize;
         cacheConfiguration.BlockSize = blockSize;
-        cacheConfiguration.DataCacheFlags = 1;  // normalized access or not in GPU texture memory
-        cacheManager = tdns::common::create_unique_ptr<tdns::gpucache::CacheManager<uchar1>>(volumeConfigurations[0], cacheConfiguration, gpuID);
 
-        //===================================================================================================
-        // Exemple application to use GcCore : GPU DVR ray-caster
-        //===================================================================================================
-        tdns::graphics::display_volume_raycaster(cacheManager.get(), volumeData);
+        uint32_t numBytes;
+        conf.get_field("NumberEncodedBytes", numBytes);
+
+        // Create the GPU Cache Manager and run raycaster
+        switch (numBytes) {
+            case 1: {
+                cacheConfiguration.DataCacheFlags = 1;
+                std::unique_ptr<tdns::gpucache::CacheManager<uchar1>> cacheManager;
+                cacheManager = tdns::common::create_unique_ptr<tdns::gpucache::CacheManager<uchar1>>(volumeConfigurations[0], cacheConfiguration, gpuID);
+
+                tdns::graphics::display_volume_raycaster(cacheManager.get(), volumeData);
+                break;
+            }
+            case 2: {
+                cacheConfiguration.DataCacheFlags = 1;
+                std::unique_ptr<tdns::gpucache::CacheManager<ushort1>> cacheManager;
+                cacheManager = tdns::common::create_unique_ptr<tdns::gpucache::CacheManager<ushort1>>(volumeConfigurations[0], cacheConfiguration, gpuID);
+
+                tdns::graphics::display_volume_raycaster(cacheManager.get(), volumeData);
+                break;
+            }
+            case 4: {
+                cacheConfiguration.DataCacheFlags = 1;
+                std::unique_ptr<tdns::gpucache::CacheManager<float1>> cacheManager;
+                cacheManager = tdns::common::create_unique_ptr<tdns::gpucache::CacheManager<float1>>(volumeConfigurations[0], cacheConfiguration, gpuID);
+
+                tdns::graphics::display_volume_raycaster(cacheManager.get(), volumeData);
+                break;
+            }
+            default:
+                LOGFATAL(10, "Invalid value for 'NumberEncodedBytes'");
+        }
     }
 
     //---------------------------------------------------------------------------------------------
@@ -115,7 +138,11 @@ namespace app
     //---------------------------------------------------------------------------------------------
     void Application::pre_process(tdns::data::MetaData &volumeData) const
     {
+        tdns::data::Configuration &conf = tdns::data::Configuration::get_instance();
         std::cout << "Start pre-processing (see log file) ..." << std::endl;
+
+        uint32_t numBytes;
+        conf.get_field("NumberEncodedBytes", numBytes);
 
         // Mipmapping
         tdns::preprocessor::Mipmapper mipmapper;
@@ -127,15 +154,34 @@ namespace app
 
         // PROCESS EMPTY BRICKS AND VOLUME HISTOGRAM
         // ========================= UCHAR1 =========================
-        tdns::preprocessor::BrickProcessor<uchar1> brickProcessor(volumeData);
-        // Process volume histogram
-        brickProcessor.process_histo();
-        // Process empty bricks
         uint32_t *d_threshold;
-        uint32_t threshold = 10;
+        uint32_t threshold = 0;
         CUDA_SAFE_CALL(cudaMalloc(&d_threshold, sizeof(uint32_t)));
         CUDA_SAFE_CALL(cudaMemcpy(d_threshold, &threshold, sizeof(uint32_t), cudaMemcpyHostToDevice));
-        brickProcessor.process_empty<tdns::preprocessor::DefaultBrickProcessorPredicate>(d_threshold);
+
+        switch (numBytes) {
+            case 1: {
+                tdns::preprocessor::BrickProcessor<uchar1> brickProcessor(volumeData);
+                brickProcessor.process_histo();
+                brickProcessor.process_empty<tdns::preprocessor::DefaultBrickProcessorPredicate>(d_threshold);
+                break;
+            }
+            case 2: {
+                tdns::preprocessor::BrickProcessor<ushort1> brickProcessor(volumeData);
+                brickProcessor.process_histo();
+                brickProcessor.process_empty<tdns::preprocessor::BrickProcessor16BitsPredicate>(d_threshold);
+                break;
+            }
+            case 4: {
+                tdns::preprocessor::BrickProcessor<float1> brickProcessor(volumeData);
+                // Not available for float1 apparently
+                //brickProcessor.process_histo();
+                brickProcessor.process_empty<tdns::preprocessor::BrickProcessorF32Predicate>(d_threshold);
+                break;
+            }
+            default:
+                LOGFATAL(10, "Invalid value for 'NumberEncodedBytes'");
+        }
 
         volumeData.write_bricks_xml();
     }

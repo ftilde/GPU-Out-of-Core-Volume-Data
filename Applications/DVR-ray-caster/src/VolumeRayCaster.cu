@@ -67,7 +67,8 @@ namespace graphics
                     );
 
     //---------------------------------------------------------------------------------------------
-    void display_volume_raycaster(tdns::gpucache::CacheManager<uchar1> *manager, tdns::data::MetaData &volumeData)
+    template<typename T>
+    void display_volume_raycaster(tdns::gpucache::CacheManager<T> *manager, tdns::data::MetaData &volumeData)
     {
         // Get the needed fiel in the configuration file
         tdns::data::Configuration &conf = tdns::data::Configuration::get_instance();
@@ -164,6 +165,10 @@ namespace graphics
         /*********************** CALL THE DISPLAY FUNCTION ***********************/
         display(sdlWindow, shader, screenSize, bboxmin, bboxmax, marchingStep, tf, volumeData, manager, d_levelsSize, d_invLevelsSize, d_LODBrickSize, d_LODStepSize, histo, compositingMode);
     }
+
+    template void display_volume_raycaster<uchar1>(tdns::gpucache::CacheManager<uchar1> *manager, tdns::data::MetaData &volumeData);
+    template void display_volume_raycaster<ushort1>(tdns::gpucache::CacheManager<ushort1> *manager, tdns::data::MetaData &volumeData);
+    template void display_volume_raycaster<float1>(tdns::gpucache::CacheManager<float1> *manager, tdns::data::MetaData &volumeData);
 
     //---------------------------------------------------------------------------------------------
     template<typename T>

@@ -32,6 +32,18 @@ namespace preprocessor
         }
     };
 
+    struct BrickProcessorF32Predicate
+    {
+        /**
+        * @brief Default predicate. If the value of the current voxel is
+        *        under a threshold, it is considered as an empty voxel.
+        */
+        __device__ static bool predicate(float1 voxel, void *otherData)
+        {
+            return voxel.x < *reinterpret_cast<float*>(otherData) ? true : false;
+        }
+    };
+
     struct ProcessorUchar4Predicate
     {
         /**

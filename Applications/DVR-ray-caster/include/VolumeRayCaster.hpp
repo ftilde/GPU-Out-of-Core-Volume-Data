@@ -30,7 +30,8 @@ namespace graphics
     /**
     * @brief
     */
-    void TDNS_API display_volume_raycaster(tdns::gpucache::CacheManager<uchar1> *manager, tdns::data::MetaData &volumeData);
+    template<typename T>
+    void TDNS_API display_volume_raycaster(tdns::gpucache::CacheManager<T> *manager, tdns::data::MetaData &volumeData);
 
 } // namespace graphics
 } // namespace tdns

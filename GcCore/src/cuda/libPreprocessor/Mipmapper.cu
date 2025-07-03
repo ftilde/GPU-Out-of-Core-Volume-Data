@@ -26,7 +26,8 @@ namespace preprocessor
     //---------------------------------------------------------------------------------------------------
     //---------------------------------------------------------------------------------------------------
     //---------------------------------------------------------------------------------------------------
-    __global__ void down_sampling(uint8_t *input,
+    template<typename T>
+    __device__ void down_sampling_inner(uint8_t *input,
         uint8_t *output,
         const uint32_t inputWidth,
         const uint32_t inputHeight,
@@ -59,48 +60,71 @@ namespace preprocessor
         const uint32_t inputYIndexStart = outputYIndex * pixelGroupSize.y;
         const uint32_t inputYIndexEnd = inputYIndexStart + pixelGroupSize.y;
 
-        // if (numberChannels == 1 && numberEncodedBytes > 1)
-        // {
-        //     double channelSum;
-        //     T *ptrInput = reinterpret_cast<T*>(input);
-        //     T *ptrOutput = reinterpret_cast<T*>(output);
-        //     for (uint32_t inputZIndex = 0; inputZIndex < pixelGroupSize.z; ++inputZIndex)
-        //     for (uint32_t inputYIndex = inputYIndexStart; inputYIndex < inputYIndexEnd; ++inputYIndex)
-        //     for (uint32_t inputXIndex = inputXIndexStart; inputXIndex <= inputXIndexEnd; inputXIndex += numberEncodedBytes)
-        //     {
-        //         uint32_t input_tid = inputZIndex * (inputWidthStep * inputHeight) + (inputYIndex * inputWidthStep) + inputXIndex;
-        //         T pixelValue;
-        //         pixelValue = ptrInput[input_tid / numberEncodedBytes];
-
-        //         // uint16_t toto = pixelValue.x;
-        //         // // Swap endianness
-        //         // uint8_t b1, b2;
-        //         // b1 = toto & 255;
-        //         // b2 = (toto >> 8) & 255;
-        //         // uint16_t voxelLittleEndian = (b1 << 8) + b2;
-        //         // channelSum += static_cast<double>(voxelLittleEndian);
-
-        //         channelSum += static_cast<double>(pixelValue.x);
-        //     }
-
-        //     T out;
-        //     // out.x = static_cast<uint16_t>(channelSum.x / static_cast<uint64_t>(pixelGroupArea));
-        //     out.x = channelSum / static_cast<double>(pixelGroupArea);
-        //     ptrOutput[output_tid / numberEncodedBytes] = out;
-        // }
-        // else
-        // {
-        uint64_t channelSum = 0;
-        for (uint32_t inputZIndex = 0; inputZIndex < pixelGroupSize.z; ++inputZIndex)
+        if (numberChannels == 1 && numberEncodedBytes > 1)
+        {
+            double channelSum;
+            T *ptrInput = reinterpret_cast<T*>(input);
+            T *ptrOutput = reinterpret_cast<T*>(output);
+            for (uint32_t inputZIndex = 0; inputZIndex < pixelGroupSize.z; ++inputZIndex)
             for (uint32_t inputYIndex = inputYIndexStart; inputYIndex < inputYIndexEnd; ++inputYIndex)
-                for (uint32_t inputXIndex = inputXIndexStart; inputXIndex <= inputXIndexEnd; inputXIndex += numberEncodedBytes)
-                {
-                    uint32_t input_tid = inputZIndex * (inputWidthStep * inputHeight) + (inputYIndex * inputWidthStep) + inputXIndex;
-                    channelSum += input[input_tid];
-                }
+            for (uint32_t inputXIndex = inputXIndexStart; inputXIndex <= inputXIndexEnd; inputXIndex += numberEncodedBytes)
+            {
+                uint32_t input_tid = inputZIndex * (inputWidthStep * inputHeight) + (inputYIndex * inputWidthStep) + inputXIndex;
+                T pixelValue;
+                pixelValue = ptrInput[input_tid / numberEncodedBytes];
 
-        output[output_tid] = static_cast<uint8_t>(channelSum / pixelGroupArea);
-        // }
+                // uint16_t toto = pixelValue.x;
+                // // Swap endianness
+                // uint8_t b1, b2;
+                // b1 = toto & 255;
+                // b2 = (toto >> 8) & 255;
+                // uint16_t voxelLittleEndian = (b1 << 8) + b2;
+                // channelSum += static_cast<double>(voxelLittleEndian);
+
+                channelSum += static_cast<double>(pixelValue.x);
+            }
+
+            T out;
+            // out.x = static_cast<uint16_t>(channelSum.x / static_cast<uint64_t>(pixelGroupArea));
+            out.x = channelSum / static_cast<double>(pixelGroupArea);
+            ptrOutput[output_tid / numberEncodedBytes] = out;
+        }
+        else
+        {
+            uint64_t channelSum = 0;
+            for (uint32_t inputZIndex = 0; inputZIndex < pixelGroupSize.z; ++inputZIndex)
+                for (uint32_t inputYIndex = inputYIndexStart; inputYIndex < inputYIndexEnd; ++inputYIndex)
+                    for (uint32_t inputXIndex = inputXIndexStart; inputXIndex <= inputXIndexEnd; inputXIndex += numberEncodedBytes)
+                    {
+                        uint32_t input_tid = inputZIndex * (inputWidthStep * inputHeight) + (inputYIndex * inputWidthStep) + inputXIndex;
+                        channelSum += input[input_tid];
+                    }
+
+            output[output_tid] = static_cast<uint8_t>(channelSum / pixelGroupArea);
+        }
+    }
+
+    __global__ void down_sampling(uint8_t *input,
+        uint8_t *output,
+        const uint32_t inputWidth,
+        const uint32_t inputHeight,
+        const uint32_t inputWidthStep,
+        const uint32_t outputWidthStep,
+        const uint32_t numberEncodedBytes,
+        const uint32_t numberChannels,
+        const uint3 pixelGroupSize)
+    {
+        switch(numberEncodedBytes) {
+            case 1:
+                down_sampling_inner<uchar1>(input, output, inputWidth, inputHeight, inputWidthStep, outputWidthStep, numberEncodedBytes, numberChannels, pixelGroupSize);
+                break;
+            case 2:
+                down_sampling_inner<ushort1>(input, output, inputWidth, inputHeight, inputWidthStep, outputWidthStep, numberEncodedBytes, numberChannels, pixelGroupSize);
+                break;
+            case 4:
+                down_sampling_inner<float1>(input, output, inputWidth, inputHeight, inputWidthStep, outputWidthStep, numberEncodedBytes, numberChannels, pixelGroupSize);
+                break;
+        }
     }
 
     //---------------------------------------------------------------------------------------------------
