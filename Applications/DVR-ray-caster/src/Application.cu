@@ -84,6 +84,7 @@ namespace app
         tdns::data::CacheConfiguration cacheConfiguration;
         cacheConfiguration.CacheSize = cacheSize;
         cacheConfiguration.BlockSize = blockSize;
+        cacheConfiguration.DataCacheFlags = 1;
 
         uint32_t numBytes;
         conf.get_field("NumberEncodedBytes", numBytes);
@@ -91,7 +92,6 @@ namespace app
         // Create the GPU Cache Manager and run raycaster
         switch (numBytes) {
             case 1: {
-                cacheConfiguration.DataCacheFlags = 1;
                 std::unique_ptr<tdns::gpucache::CacheManager<uchar1>> cacheManager;
                 cacheManager = tdns::common::create_unique_ptr<tdns::gpucache::CacheManager<uchar1>>(volumeConfigurations[0], cacheConfiguration, gpuID);
 
@@ -99,7 +99,6 @@ namespace app
                 break;
             }
             case 2: {
-                cacheConfiguration.DataCacheFlags = 1;
                 std::unique_ptr<tdns::gpucache::CacheManager<ushort1>> cacheManager;
                 cacheManager = tdns::common::create_unique_ptr<tdns::gpucache::CacheManager<ushort1>>(volumeConfigurations[0], cacheConfiguration, gpuID);
 
@@ -107,7 +106,6 @@ namespace app
                 break;
             }
             case 4: {
-                cacheConfiguration.DataCacheFlags = 1;
                 std::unique_ptr<tdns::gpucache::CacheManager<float1>> cacheManager;
                 cacheManager = tdns::common::create_unique_ptr<tdns::gpucache::CacheManager<float1>>(volumeConfigurations[0], cacheConfiguration, gpuID);
 

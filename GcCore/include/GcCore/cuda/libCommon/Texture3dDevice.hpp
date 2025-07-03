@@ -156,6 +156,7 @@ namespace common
             case AccessMode::Normalized:
             {
                 texDesc.filterMode       = cudaFilterModeLinear;
+                texDesc.readMode         = cudaReadModeElementType; // for float
                 texDesc.normalizedCoords = 1;
                 break;
             }
