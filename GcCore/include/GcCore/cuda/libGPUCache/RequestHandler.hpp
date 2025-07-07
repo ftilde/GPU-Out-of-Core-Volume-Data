@@ -316,7 +316,7 @@ namespace gpucache
 
             LOGINFO(40, tdns::common::log_details::Verbosity::INSANE, "Get brick Level [" << coordinateBigBrick.w
                 << "] position [" << coordinateBigBrick.x << " - " << coordinateBigBrick.y << " - " << coordinateBigBrick.z 
-                << "] status [" << bricksManager.get_status_string(status) << "]");
+                << "] status [" << bricksManager.get_status_string(status) << "] " << i << "/" << requestedBricks.size());
 
             switch(status)
             {
