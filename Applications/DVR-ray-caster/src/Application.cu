@@ -56,6 +56,9 @@ namespace app
         uint32_t brickSize;
         conf.get_field("BrickSize", brickSize);
 
+        uint32_t numBytes;
+        conf.get_field("NumberEncodedBytes", numBytes);
+
         // Create or load the multi-resolution bricked representation of the volume to visualize
         std::string bricksDirectory = volumeDirectory + 
             tdns::data::BricksManager::get_brick_folder(tdns::math::Vector3ui(brickSize));
@@ -73,21 +76,29 @@ namespace app
         std::vector<tdns::data::VolumeConfiguration> volumeConfigurations(1); // only one volume here
         volumeConfigurations[0] = tdns::data::load_volume_configuration(cfg_file);
 
-        // Cache configuration (size) 
+        const uint64_t vram_size = 8UL << 30;
+
+        // Cache configuration (size)
         // (here we use only one level of pagination)
         std::vector<tdns::math::Vector3ui> blockSize(1, brickSize);
-        std::vector<tdns::math::Vector3ui> cacheSize(1, tdns::math::Vector3ui(25, 25, 25));
-        // cache size of (25x25x25) bricks of (16x16x16) voxels of uchar1 bytes = 25x25x25x16x16x16x1 = 61Mo
-        // (Must be adapted to bricks size, voxels encoding type AND GPU available memory!).
-        // (If it's too large, it will cause an [out of memory] error. If it's too small, the cache will fill up quickly and performance will suffer!)
+
+        uint64_t brickSizeInBytes = brickSize*brickSize*brickSize * numBytes;
+        uint64_t numCacheEntries = vram_size / brickSizeInBytes;
+        uint64_t initialSizeDim = std::cbrt((double)numCacheEntries);
+        tdns::math::Vector3ui cacheSize(initialSizeDim, initialSizeDim, initialSizeDim);
+        int d = 0;
+        while(((uint64_t)cacheSize[0]) * ((uint64_t)cacheSize[1]) * ((uint64_t)cacheSize[2]) < numCacheEntries) {
+            cacheSize[d] += 1;
+            d = (d+1)%3;
+        }
+        //std::cout << cacheSize[0] << ", " << cacheSize[1] << ", " << cacheSize[2] << std::endl;
+
+        std::vector<tdns::math::Vector3ui> cacheSizeVec(1, cacheSize);
 
         tdns::data::CacheConfiguration cacheConfiguration;
-        cacheConfiguration.CacheSize = cacheSize;
+        cacheConfiguration.CacheSize = cacheSizeVec;
         cacheConfiguration.BlockSize = blockSize;
         cacheConfiguration.DataCacheFlags = 1;
-
-        uint32_t numBytes;
-        conf.get_field("NumberEncodedBytes", numBytes);
 
         // Create the GPU Cache Manager and run raycaster
         switch (numBytes) {
