@@ -38,6 +38,7 @@ namespace graphics
                             uint3 *levelsSize,
                             float3 *LODBrickSize,
                             float *LODStepSize,
+                            uint32_t numLODs,
                             size_t seed);
 
     __global__ void TDNS_API RayCastDVR(uint32_t *pixelBuffer,
@@ -52,6 +53,7 @@ namespace graphics
                             uint3 *levelsSize,
                             float3 *LODBrickSize,
                             float *LODStepSize,
+                            uint32_t numLODs,
                             size_t seed);
 
     __global__ void TDNS_API RayCastDVR(uint32_t *pixelBuffer,
@@ -66,6 +68,7 @@ namespace graphics
                             uint3 *levelsSize,
                             float3 *LODBrickSize,
                             float *LODStepSize,
+                            uint32_t numLODs,
                             size_t seed);
 
     __global__ void TDNS_API RayCastMOP(uint32_t *pixelBuffer,
@@ -80,6 +83,7 @@ namespace graphics
                             uint3 *levelsSize,
                             float3 *LODBrickSize,
                             float *LODStepSize,
+                            uint32_t numLODs,
                             size_t seed);
 
     __global__ void TDNS_API RayCastMOP(uint32_t *pixelBuffer,
@@ -94,6 +98,7 @@ namespace graphics
                             uint3 *levelsSize,
                             float3 *LODBrickSize,
                             float *LODStepSize,
+                            uint32_t numLODs,
                             size_t seed);
 
     __global__ void TDNS_API RayCastMOP(uint32_t *pixelBuffer,
@@ -108,6 +113,7 @@ namespace graphics
                             uint3 *levelsSize,
                             float3 *LODBrickSize,
                             float *LODStepSize,
+                            uint32_t numLODs,
                             size_t seed);
 
     __device__ float3 TDNS_API operator*(float* matrix, float3 v);
@@ -120,7 +126,7 @@ namespace graphics
 
     __device__ uint32_t TDNS_API rgbaFloatToInt(float4 &rgba);
 
-    __device__ uint32_t TDNS_API compute_LOD(float voxelDistance, uint32_t levelMax, uint3 *levelsSize, float3 *LODBrickSize);
+    __device__ uint32_t TDNS_API compute_LOD(float pixelDistX, float pixelDistY, float3 dirLeft, float3 dirUp, float3 *invLevelsSize, uint32_t numLODs);
     
     __device__ void TDNS_API print_bb_edges(const float3 &bboxMin, const float3 &bboxMax, const float3 &position, float4 &color);
     

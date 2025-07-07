@@ -20,22 +20,41 @@ namespace graphics
                             uint3 *levelsSize,
                             float3 *LODBrickSize,
                             float *LODStepSize,
+                            uint32_t numLODs,
                             size_t seed)
     {
         // 2D Thread ID
         uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
         uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
 
+        uint32_t xNeighbor = x+1;
+        if (xNeighbor > screenSize.x) {
+            xNeighbor = x-1;
+        }
+        uint32_t yNeighbor = y+1;
+        if (yNeighbor > screenSize.y) {
+            yNeighbor = y-1;
+        }
+
         if (x > screenSize.x || y > screenSize.y) return;
 
         // Transform the 2D screen coords into [-1; 1] range
         float u = ((x + 0.5f) / (float) screenSize.x) * 2.0f - 1.0f;
+        float uNeighbor = ((xNeighbor + 0.5f) / (float) screenSize.x) * 2.0f - 1.0f;
         float v = ((y + 0.5f) / (float) screenSize.y) * 2.0f - 1.0f;
+        float vNeighbor = ((yNeighbor + 0.5f) / (float) screenSize.y) * 2.0f - 1.0f;
 
         // calculate eye ray in world space
         float3 origin = make_float3(mul(d_invModelViewMatrix, make_float4(0.0f, 0.0f, 0.0f, 1.0f)));
         float3 direction = normalize(make_float3(u, v, -2.f));
         direction = mul(d_invModelViewMatrix, direction);
+        float3 directionXN = normalize(make_float3(uNeighbor, v, -2.f));
+        directionXN = mul(d_invModelViewMatrix, directionXN);
+        float3 directionYN = normalize(make_float3(u, vNeighbor, -2.f));
+        directionYN = mul(d_invModelViewMatrix, directionYN);
+
+        float3 directionLeft = normalize(cross(direction, directionYN));
+        float3 directionUp = normalize(cross(direction, directionXN));
 
         // find intersection with box
         float tnear, tfar;
@@ -63,19 +82,26 @@ namespace graphics
             float3 texturePosition = {0.f, 0.f, 0.f};
             float3 normalizedPosition = {0.f, 0.f, 0.f};
 
+            float endPixelDistX = abs(dot(direction - directionXN, directionLeft) * tfar);
+            float endPixelDistY = abs(dot(direction - directionYN, directionUp) * tfar);
+
             // Print the bouding box edges in red
             // print_bb_edges(bboxMin, bboxMax, position, finalColor);
             
             // march along ray from front to back, accumulating color
             while (finalColor.w < 0.95f && t < tfar)
             {
+                float alpha = t / tfar;
+                float pixelDistX = endPixelDistX * alpha;
+                float pixelDistY = endPixelDistY * alpha;
+
                 // Transform the [-1; 1] world position into a [0; 0.99[ range volume coords for the texture.
                 texturePosition = position * 0.495f + 0.495f;
                 texturePosition.z = 1 - texturePosition.z;
 
                 // sampling
                 normalizedPosition = clamp(texturePosition, 0.f, 0.99f);
-                uint32_t lod = compute_LOD(t, 4, levelsSize, LODBrickSize);
+                uint32_t lod = compute_LOD(pixelDistX, pixelDistY, directionLeft, directionUp, invLevelsSize, numLODs);
                 tdns::gpucache::VoxelStatus voxelStatus = manager.template get_normalized<float>(lod, normalizedPosition, sample);
 
                 // Handle Unmapped and Empty bricks
@@ -138,6 +164,7 @@ namespace graphics
                             uint3 *levelsSize,
                             float3 *LODBrickSize,
                             float *LODStepSize,
+                            uint32_t numLODs,
                             size_t seed)
     {
         // 2D Thread ID
@@ -146,14 +173,32 @@ namespace graphics
 
         if (x > screenSize.x || y > screenSize.y) return;
 
+        uint32_t xNeighbor = x+1;
+        if (xNeighbor > screenSize.x) {
+            xNeighbor = x-1;
+        }
+        uint32_t yNeighbor = y+1;
+        if (yNeighbor > screenSize.y) {
+            yNeighbor = y-1;
+        }
+
         // Transform the 2D screen coords into [-1; 1] range
         float u = ((x + 0.5f) / (float) screenSize.x) * 2.0f - 1.0f;
+        float uNeighbor = ((xNeighbor + 0.5f) / (float) screenSize.x) * 2.0f - 1.0f;
         float v = ((y + 0.5f) / (float) screenSize.y) * 2.0f - 1.0f;
+        float vNeighbor = ((yNeighbor + 0.5f) / (float) screenSize.y) * 2.0f - 1.0f;
 
         // calculate eye ray in world space
         float3 origin = make_float3(mul(d_invModelViewMatrix, make_float4(0.0f, 0.0f, 0.0f, 1.0f)));
         float3 direction = normalize(make_float3(u, v, -2.f));
         direction = mul(d_invModelViewMatrix, direction);
+        float3 directionXN = normalize(make_float3(uNeighbor, v, -2.f));
+        directionXN = mul(d_invModelViewMatrix, directionXN);
+        float3 directionYN = normalize(make_float3(u, vNeighbor, -2.f));
+        directionYN = mul(d_invModelViewMatrix, directionYN);
+
+        float3 directionLeft = normalize(cross(direction, directionYN));
+        float3 directionUp = normalize(cross(direction, directionXN));
 
         // find intersection with box
         float tnear, tfar;
@@ -181,19 +226,26 @@ namespace graphics
             float3 texturePosition = {0.f, 0.f, 0.f};
             float3 normalizedPosition = {0.f, 0.f, 0.f};
 
+            float endPixelDistX = abs(dot(direction - directionXN, directionLeft) * tfar);
+            float endPixelDistY = abs(dot(direction - directionYN, directionUp) * tfar);
+
             // Print the bouding box edges in red
             // print_bb_edges(bboxMin, bboxMax, position, finalColor);
             
             // march along ray from front to back, accumulating color
             while (t < tfar)
             {
+                float alpha = t / tfar;
+                float pixelDistX = endPixelDistX * alpha;
+                float pixelDistY = endPixelDistY * alpha;
+
                 // Transform the [-1; 1] world position into a [0; 0.99[ range volume coords for the texture.
                 texturePosition = position * 0.495f + 0.495f;
                 texturePosition.z = 1 - texturePosition.z;
 
                 // sampling
                 normalizedPosition = clamp(texturePosition, 0.f, 0.99f);
-                uint32_t lod = compute_LOD(t, 4, levelsSize, LODBrickSize);
+                uint32_t lod = compute_LOD(pixelDistX, pixelDistY, directionLeft, directionUp, invLevelsSize, numLODs);
                 tdns::gpucache::VoxelStatus voxelStatus = manager.template get_normalized<float>(lod, normalizedPosition, sample);
 
                 // Handle Unmapped and Empty bricks
@@ -246,9 +298,10 @@ namespace graphics
                             uint3 *levelsSize,
                             float3 *LODBrickSize,
                             float *LODStepSize,
+                            uint32_t numLODs,
                             size_t seed)
     {
-        RayCastDVRImpl(pixelBuffer, tfTex, screenSize, renderScreenWidth, fov, bboxMin, bboxMax, steps, tstep, manager, invLevelsSize, levelsSize, LODBrickSize, LODStepSize, seed);
+        RayCastDVRImpl(pixelBuffer, tfTex, screenSize, renderScreenWidth, fov, bboxMin, bboxMax, steps, tstep, manager, invLevelsSize, levelsSize, LODBrickSize, LODStepSize, numLODs, seed);
     }
     __global__ void RayCastDVR(uint32_t *pixelBuffer,
                             cudaTextureObject_t tfTex,
@@ -262,9 +315,10 @@ namespace graphics
                             uint3 *levelsSize,
                             float3 *LODBrickSize,
                             float *LODStepSize,
+                            uint32_t numLODs,
                             size_t seed)
     {
-        RayCastDVRImpl(pixelBuffer, tfTex, screenSize, renderScreenWidth, fov, bboxMin, bboxMax, steps, tstep, manager, invLevelsSize, levelsSize, LODBrickSize, LODStepSize, seed);
+        RayCastDVRImpl(pixelBuffer, tfTex, screenSize, renderScreenWidth, fov, bboxMin, bboxMax, steps, tstep, manager, invLevelsSize, levelsSize, LODBrickSize, LODStepSize, numLODs, seed);
     }
     __global__ void RayCastDVR(uint32_t *pixelBuffer,
                             cudaTextureObject_t tfTex,
@@ -278,9 +332,10 @@ namespace graphics
                             uint3 *levelsSize,
                             float3 *LODBrickSize,
                             float *LODStepSize,
+                            uint32_t numLODs,
                             size_t seed)
     {
-        RayCastDVRImpl(pixelBuffer, tfTex, screenSize, renderScreenWidth, fov, bboxMin, bboxMax, steps, tstep, manager, invLevelsSize, levelsSize, LODBrickSize, LODStepSize, seed);
+        RayCastDVRImpl(pixelBuffer, tfTex, screenSize, renderScreenWidth, fov, bboxMin, bboxMax, steps, tstep, manager, invLevelsSize, levelsSize, LODBrickSize, LODStepSize, numLODs, seed);
     }
 
     /// MOP ------------------------------------------------------------------------
@@ -297,9 +352,10 @@ namespace graphics
                             uint3 *levelsSize,
                             float3 *LODBrickSize,
                             float *LODStepSize,
+                            uint32_t numLODs,
                             size_t seed)
     {
-        RayCastMOPImpl(pixelBuffer, tfTex, screenSize, renderScreenWidth, fov, bboxMin, bboxMax, steps, tstep, manager, invLevelsSize, levelsSize, LODBrickSize, LODStepSize, seed);
+        RayCastMOPImpl(pixelBuffer, tfTex, screenSize, renderScreenWidth, fov, bboxMin, bboxMax, steps, tstep, manager, invLevelsSize, levelsSize, LODBrickSize, LODStepSize, numLODs, seed);
     }
     __global__ void RayCastMOP(uint32_t *pixelBuffer,
                             cudaTextureObject_t tfTex,
@@ -313,9 +369,10 @@ namespace graphics
                             uint3 *levelsSize,
                             float3 *LODBrickSize,
                             float *LODStepSize,
+                            uint32_t numLODs,
                             size_t seed)
     {
-        RayCastMOPImpl(pixelBuffer, tfTex, screenSize, renderScreenWidth, fov, bboxMin, bboxMax, steps, tstep, manager, invLevelsSize, levelsSize, LODBrickSize, LODStepSize, seed);
+        RayCastMOPImpl(pixelBuffer, tfTex, screenSize, renderScreenWidth, fov, bboxMin, bboxMax, steps, tstep, manager, invLevelsSize, levelsSize, LODBrickSize, LODStepSize, numLODs, seed);
     }
     __global__ void RayCastMOP(uint32_t *pixelBuffer,
                             cudaTextureObject_t tfTex,
@@ -329,9 +386,10 @@ namespace graphics
                             uint3 *levelsSize,
                             float3 *LODBrickSize,
                             float *LODStepSize,
+                            uint32_t numLODs,
                             size_t seed)
     {
-        RayCastMOPImpl(pixelBuffer, tfTex, screenSize, renderScreenWidth, fov, bboxMin, bboxMax, steps, tstep, manager, invLevelsSize, levelsSize, LODBrickSize, LODStepSize, seed);
+        RayCastMOPImpl(pixelBuffer, tfTex, screenSize, renderScreenWidth, fov, bboxMin, bboxMax, steps, tstep, manager, invLevelsSize, levelsSize, LODBrickSize, LODStepSize, numLODs, seed);
     }
 
     // DEVICE FUNC
@@ -403,24 +461,21 @@ namespace graphics
     }
 
     //---------------------------------------------------------------------------------------------
-    inline __device__ uint32_t compute_LOD(float voxelDistance, uint32_t levelMax, uint3 *levelsSize, float3 *LODBrickSize)
+    inline __device__ uint32_t compute_LOD(float pixelDistX, float pixelDistY, float3 dirLeft, float3 dirUp, float3 *invLevelsSize, uint32_t numLODs)
     {
-        // float fov = 70.f;
-        // float near = 0.1f;
-        // int32_t i;
+        float lod_coarseness = 1.0;
 
-        // for (i = levelMax; i >= 0; --i)
-        // {
-        //     float V = LODBrickSize[i].x / levelsSize[i].x;
-        //     if (V * (near / voxelDistance) < 1.f / fov)
-        //         break;
-        // }
+        int32_t i;
+        for(i=0;i<numLODs-1; ++i) {
+            //float leftSpacingDist = max(invLevelsSize[i].x, max(invLevelsSize[i].y, invLevelsSize[i].z));
+            float spacingDistLeft = length(dirLeft * invLevelsSize[i]);
+            float spacingDistUp = length(dirUp * invLevelsSize[i]);
 
-        // return i;
-
-        uint32_t level = (voxelDistance + 4.f) / 5.f;
-        if (level > levelMax) level = levelMax;
-        return level;
+            if(spacingDistLeft >= pixelDistX * lod_coarseness || spacingDistUp >= pixelDistY * lod_coarseness) {
+                break;
+            }
+        }
+        return i;
     }
 
     //---------------------------------------------------------------------------------------------

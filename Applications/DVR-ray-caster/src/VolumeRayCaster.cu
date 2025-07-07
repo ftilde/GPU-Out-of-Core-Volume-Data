@@ -47,6 +47,7 @@ namespace graphics
                     float3 *d_invLevelsSize,
                     float3 *d_LODBrickSize,
                     float *d_LODStepSize,
+                    uint32_t numLODs,
                     std::vector<float> &histo,
                     CompositingMode compositingMode
                     );
@@ -63,6 +64,7 @@ namespace graphics
                     float3 *d_invLevelsSize,
                     float3 *d_LODBrickSize,
                     float *d_LODStepSize,
+                    uint32_t numLODs,
                     CompositingMode compositingMode
                     );
 
@@ -163,7 +165,7 @@ namespace graphics
         /* --------------------------------------------------------------------------------------------------------------------- */
 
         /*********************** CALL THE DISPLAY FUNCTION ***********************/
-        display(sdlWindow, shader, screenSize, bboxmin, bboxmax, marchingStep, tf, volumeData, manager, d_levelsSize, d_invLevelsSize, d_LODBrickSize, d_LODStepSize, histo, compositingMode);
+        display(sdlWindow, shader, screenSize, bboxmin, bboxmax, marchingStep, tf, volumeData, manager, d_levelsSize, d_invLevelsSize, d_LODBrickSize, d_LODStepSize, nbLevels, histo, compositingMode);
     }
 
     template void display_volume_raycaster<uchar1>(tdns::gpucache::CacheManager<uchar1> *manager, tdns::data::MetaData &volumeData);
@@ -184,6 +186,7 @@ namespace graphics
                     float3 *d_invLevelsSize,
                     float3 *d_LODBrickSize,
                     float *d_LODStepSize,
+                    uint32_t numLODs,
                     std::vector<float> &histo,
                     CompositingMode compositingMode
                     )
@@ -249,7 +252,7 @@ namespace graphics
 
             // update_CUDA_inv_view_model_matrix(viewMatrix, modelMatrix);
             update_CUDA_inv_view_model_matrix(invViewMatrix);
-            get_frame(d_pixelBuffer, tfTex, screenSize, bboxmin, bboxmax, marchingStep, manager, camera, d_levelsSize,d_invLevelsSize, d_LODBrickSize, d_LODStepSize, compositingMode);
+            get_frame(d_pixelBuffer, tfTex, screenSize, bboxmin, bboxmax, marchingStep, manager, camera, d_levelsSize,d_invLevelsSize, d_LODBrickSize, d_LODStepSize, numLODs, compositingMode);
 
             // Bind VAO
             glBindVertexArray(vao);
@@ -327,6 +330,7 @@ namespace graphics
                     float3 *d_invLevelsSize,
                     float3 *d_LODBrickSize,
                     float *d_LODStepSize,
+                    uint32_t numLODs,
                     CompositingMode compositingMode
                     )
     {
@@ -353,6 +357,7 @@ namespace graphics
                     d_levelsSize,
                     d_LODBrickSize,
                     d_LODStepSize,
+                    numLODs,
                     time(0));
                 break;
             case CompositingMode::MOP:
@@ -369,6 +374,7 @@ namespace graphics
                     d_levelsSize,
                     d_LODBrickSize,
                     d_LODStepSize,
+                    numLODs,
                     time(0));
                 break;
         }
