@@ -35,7 +35,10 @@ namespace graphics
             PointSelectionRadius * PointSelectionRadius;
 
     public:
-        TransferFunction(int samplesCount); 
+        static TransferFunction defaultColorful(int samplesCount);
+        static TransferFunction greyRamp(int samplesCount);
+
+        TransferFunction(controlPoint hoveredPoint, std::vector<controlPoint> curvesControlPoints, int samplesCount); 
 
         void regenerateSamples();
         int draw(const ImVec2& size = ImVec2(0, 200));

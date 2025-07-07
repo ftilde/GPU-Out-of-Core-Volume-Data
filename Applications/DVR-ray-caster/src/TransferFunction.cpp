@@ -13,11 +13,7 @@ namespace tdns
 {
 namespace graphics
 {   
-    TransferFunction::TransferFunction(int samplesCount):
-        samplesCount(samplesCount)
-    {
-        samples.resize(samplesCount);
-
+    TransferFunction TransferFunction::defaultColorful(int samplesCount) {
         controlPoint hp  = {0.00f, 0.00f, -1, {0.f, 0.f, 0.f}};
         controlPoint cp0 = {0.20f, 0.10f,  0, {0.f, 0.f, 1.f}};
         controlPoint cp1 = {0.35f, 0.70f,  1, {0.f, 1.f, 1.f}};
@@ -25,12 +21,35 @@ namespace graphics
         controlPoint cp3 = {0.70f, 1.00f,  3, {1.f, 1.f, 0.f}};
         controlPoint cp4 = {1.00f, 1.00f,  4, {1.f, 0.f, 0.f}};
 
-        hoveredPoint = hp;
+        std::vector<controlPoint> curvesControlPoints;
         curvesControlPoints.push_back(cp0);
         curvesControlPoints.push_back(cp1);
         curvesControlPoints.push_back(cp2);
         curvesControlPoints.push_back(cp3);
         curvesControlPoints.push_back(cp4);
+
+        return TransferFunction(hp, curvesControlPoints, samplesCount);
+    }
+
+    TransferFunction TransferFunction::greyRamp(int samplesCount) {
+        controlPoint hp  = {0.00f, 0.00f, -1, {0.f, 0.f, 0.f}};
+        controlPoint cp0 = {0.00f, 0.00f,  0, {0.f, 0.f, 0.f}};
+        controlPoint cp1 = {1.00f, 1.00f,  4, {1.f, 1.f, 1.f}};
+
+        std::vector<controlPoint> curvesControlPoints;
+        curvesControlPoints.push_back(cp0);
+        curvesControlPoints.push_back(cp1);
+
+        return TransferFunction(hp, curvesControlPoints, samplesCount);
+    }
+
+    TransferFunction::TransferFunction(controlPoint hoveredPoint, std::vector<controlPoint> curvesControlPoints, int samplesCount):
+
+        hoveredPoint(hoveredPoint),
+        curvesControlPoints(curvesControlPoints),
+        samplesCount(samplesCount)
+    {
+        samples.resize(samplesCount);
 
         regenerateSamples(); // Regenerate the samples
     }

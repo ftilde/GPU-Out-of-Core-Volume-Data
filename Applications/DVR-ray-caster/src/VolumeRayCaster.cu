@@ -83,6 +83,8 @@ namespace graphics
         conf.get_field("BrickSize", brickSize);
         std::string compositing;
         conf.get_field("Compositing", compositing);
+        std::string tfName;
+        conf.get_field("tf", tfName);
         CompositingMode compositingMode;
         if(compositing == "MOP") {
             compositingMode = CompositingMode::MOP;
@@ -120,7 +122,10 @@ namespace graphics
         size_t histoSize = histo.size();
 
         // Create and init a transfer function
-        TransferFunction tf = TransferFunction(128);
+        TransferFunction tf = TransferFunction::defaultColorful(128);
+        if(tfName == "greyRamp") {
+            tf = TransferFunction::greyRamp(128);
+        }
 
         // Bounding box
         tdns::math::Vector3f bboxmin(-1.f, -1.f, -1.f);
