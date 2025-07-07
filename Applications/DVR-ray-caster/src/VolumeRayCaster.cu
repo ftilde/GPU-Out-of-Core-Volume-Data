@@ -210,7 +210,7 @@ namespace graphics
         // glm::mat4 viewMatrix;
         
         // define the background color
-        ImVec4 bgColor = ImVec4(0.1f, 0.1f, 0.1f, 1.f);
+        ImVec4 bgColor = ImVec4(0.0f, 0.0f, 0.0f, 1.f);
             
         // Get the size of the histogram of the volume
         size_t histoSize = histo.size();
