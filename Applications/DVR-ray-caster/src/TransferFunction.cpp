@@ -45,8 +45,8 @@ namespace graphics
 
     TransferFunction::TransferFunction(controlPoint hoveredPoint, std::vector<controlPoint> curvesControlPoints, int samplesCount):
 
-        hoveredPoint(hoveredPoint),
         curvesControlPoints(curvesControlPoints),
+        hoveredPoint(hoveredPoint),
         samplesCount(samplesCount)
     {
         samples.resize(samplesCount);
