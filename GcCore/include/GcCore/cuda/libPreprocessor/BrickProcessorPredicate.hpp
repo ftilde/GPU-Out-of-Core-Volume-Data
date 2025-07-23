@@ -16,7 +16,7 @@ namespace preprocessor
         */
         __device__ static bool predicate(uchar1 voxel, void *otherData)
         {
-            return voxel.x < *reinterpret_cast<uint8_t*>(otherData) ? true : false;
+            return (float)(voxel.x) < *reinterpret_cast<float*>(otherData) ? true : false;
         }
     };
 
@@ -28,7 +28,7 @@ namespace preprocessor
         */
         __device__ static bool predicate(ushort1 voxel, void *otherData)
         {
-            return voxel.x < *reinterpret_cast<uint16_t*>(otherData) ? true : false;
+            return (float)(voxel.x) < *reinterpret_cast<float*>(otherData) ? true : false;
         }
     };
 

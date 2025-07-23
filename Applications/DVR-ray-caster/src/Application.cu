@@ -162,12 +162,12 @@ namespace app
         pre_process_bricking(volumeData, levels);
 
         // PROCESS EMPTY BRICKS AND VOLUME HISTOGRAM
-        uint32_t *d_threshold;
-        uint32_t threshold = 0;
+        float *d_threshold;
+        float threshold = 0.0;
         conf.get_field("emptyBrickThreshold", threshold);
 
-        CUDA_SAFE_CALL(cudaMalloc(&d_threshold, sizeof(uint32_t)));
-        CUDA_SAFE_CALL(cudaMemcpy(d_threshold, &threshold, sizeof(uint32_t), cudaMemcpyHostToDevice));
+        CUDA_SAFE_CALL(cudaMalloc(&d_threshold, sizeof(float)));
+        CUDA_SAFE_CALL(cudaMemcpy(d_threshold, &threshold, sizeof(float), cudaMemcpyHostToDevice));
 
         switch (numBytes) {
             case 1: {
