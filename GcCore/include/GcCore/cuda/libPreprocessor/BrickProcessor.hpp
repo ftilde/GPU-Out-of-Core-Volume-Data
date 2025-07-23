@@ -92,14 +92,30 @@ namespace preprocessor
     template<typename P>
     void BrickProcessor<T>::process_empty(void *otherData)
     {
+        tdns::data::Configuration &conf = tdns::data::Configuration::get_instance();
+        uint32_t brickSizeCube;
+        if(!conf.get_field("BrickSize", brickSizeCube))
+            throw std::runtime_error("VolumeConfiguration: Missing BrickSize in configuration.");
+        tdns::math::Vector3ui brickSize = tdns::math::Vector3ui(brickSizeCube);
+
+        tdns::math::Vector3ui bigBrickSize;
+        if (!conf.get_field("BigBrickSizeX", bigBrickSize[0]))
+            throw std::runtime_error("VolumeConfiguration: Missing BigBrickSizeX in configuration.");
+        if (!conf.get_field("BigBrickSizeY", bigBrickSize[1]))
+            throw std::runtime_error("VolumeConfiguration: Missing BigBrickSizeY in configuration.");
+        if (!conf.get_field("BigBrickSizeZ", bigBrickSize[2]))
+            throw std::runtime_error("VolumeConfiguration: Missing BigBrickSizeZ in configuration.");
+
+        std::string volumeDirectory;
+        if (!conf.get_field("VolumeDirectory", volumeDirectory))
+            throw std::runtime_error("VolumeConfiguration: Missing VolumeFile in configuration.");
+
+        auto bricksManager = tdns::common::create_unique_ptr<tdns::data::BricksManager>(volumeDirectory, brickSize, bigBrickSize, sizeof(T));
+
         const uint32_t nbBricks = 1;
         std::vector<tdns::data::Bkey> &emptyBricks = _metaData->get_empty_bricks();
         //to get meta data like: encoded and size
-        //tdns::data::Brick *brick = tdns::data::BricksManager::get_instance()->get_brick(0, { 0, 0, 0 });
-        tdns::data::Brick *brick = nullptr; //<< NEED TO FIX THIS
-        // tdns::data::Brick *brick = nullptr;
-        if (!brick) return;
-        tdns::math::Vector3ui brick_edge_size = brick->get_edge_size();
+        tdns::math::Vector3ui brick_edge_size = brickSize;
 
         tdns::common::DynamicArray3dHost<T, tdns::common::DynamicArrayOptions::Options::Mapped> buffer
             (tdns::math::Vector3ui(nbBricks * brick_edge_size[0], brick_edge_size[1], brick_edge_size[2]));
@@ -128,8 +144,8 @@ namespace preprocessor
                     {
                         thrust::fill(emptyFlag.begin(), emptyFlag.end(), true);
                         tdns::math::Vector3ui position(x, y, z);
-                        //brick = tdns::data::BricksManager::get_instance()->get_brick(l, position);
-                        brick = nullptr;
+                        tdns::data::Brick *brick = bricksManager->get_brick(l, position);
+                        //brick = nullptr;
                         if (!brick) continue;
                         std::memcpy(&buffer[0], brick->get_data().data(), brick->get_data().size());
 
