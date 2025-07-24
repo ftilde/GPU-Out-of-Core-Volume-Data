@@ -34,7 +34,7 @@ namespace gpucache
         /**
         * @brief
         */
-        RequestHandler(const tdns::data::VolumeConfiguration &volumeConfiguration, size_t nbMaxRequests, int32_t gpuID = 0);
+        RequestHandler(const tdns::data::VolumeConfiguration &volumeConfiguration, const tdns::data::MetaData& metadata, size_t nbMaxRequests, int32_t gpuID = 0);
 
         void start();
         
@@ -108,10 +108,11 @@ namespace gpucache
 
     //---------------------------------------------------------------------------------------------------
     template<typename T>
-    inline RequestHandler<T>::RequestHandler(const tdns::data::VolumeConfiguration &volumeConfiguration, size_t nbMaxRequests, int32_t gpuID /*= 0*/)
+    inline RequestHandler<T>::RequestHandler(const tdns::data::VolumeConfiguration &volumeConfiguration, const tdns::data::MetaData& metadata, size_t nbMaxRequests, int32_t gpuID /*= 0*/)
     {
         _bricksManager = tdns::common::create_unique_ptr<tdns::data::BricksManager>
             (volumeConfiguration.VolumeDirectory, volumeConfiguration.BrickSize, volumeConfiguration.BigBrickSize, sizeof(T));
+        _bricksManager->load(metadata);
         _nbMaxRequests = nbMaxRequests;
         _requestBuffer = tdns::common::create_unique_ptr<tdns::common::DynamicArray3dHost
             <T, tdns::common::DynamicArrayOptions::Options::Mapped>>

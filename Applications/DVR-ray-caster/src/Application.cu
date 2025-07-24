@@ -104,21 +104,21 @@ namespace app
         switch (numBytes) {
             case 1: {
                 std::unique_ptr<tdns::gpucache::CacheManager<uchar1>> cacheManager;
-                cacheManager = tdns::common::create_unique_ptr<tdns::gpucache::CacheManager<uchar1>>(volumeConfigurations[0], cacheConfiguration, gpuID);
+                cacheManager = tdns::common::create_unique_ptr<tdns::gpucache::CacheManager<uchar1>>(volumeConfigurations[0], volumeData, cacheConfiguration, gpuID);
 
                 tdns::graphics::display_volume_raycaster(cacheManager.get(), volumeData);
                 break;
             }
             case 2: {
                 std::unique_ptr<tdns::gpucache::CacheManager<ushort1>> cacheManager;
-                cacheManager = tdns::common::create_unique_ptr<tdns::gpucache::CacheManager<ushort1>>(volumeConfigurations[0], cacheConfiguration, gpuID);
+                cacheManager = tdns::common::create_unique_ptr<tdns::gpucache::CacheManager<ushort1>>(volumeConfigurations[0], volumeData, cacheConfiguration, gpuID);
 
                 tdns::graphics::display_volume_raycaster(cacheManager.get(), volumeData);
                 break;
             }
             case 4: {
                 std::unique_ptr<tdns::gpucache::CacheManager<float1>> cacheManager;
-                cacheManager = tdns::common::create_unique_ptr<tdns::gpucache::CacheManager<float1>>(volumeConfigurations[0], cacheConfiguration, gpuID);
+                cacheManager = tdns::common::create_unique_ptr<tdns::gpucache::CacheManager<float1>>(volumeConfigurations[0], volumeData, cacheConfiguration, gpuID);
 
                 tdns::graphics::display_volume_raycaster(cacheManager.get(), volumeData);
                 break;

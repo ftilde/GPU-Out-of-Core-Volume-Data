@@ -48,7 +48,7 @@ namespace gpucache
          * @param[in]   blockSize       3D size of the virtualized element/brick for each in the Page Table hierarchy.
          * @param[in]   volumeSizes     3D size of the volume for each level of resolution.
          */
-        CacheManager(const tdns::data::VolumeConfiguration &volumeConfiguration, const tdns::data::CacheConfiguration &cacheConfiguration, int32_t gpuID = 0);
+        CacheManager(const tdns::data::VolumeConfiguration &volumeConfiguration, const tdns::data::MetaData& metadata, const tdns::data::CacheConfiguration &cacheConfiguration, int32_t gpuID = 0);
 
         /**
          * @brief Destructor.
@@ -133,7 +133,7 @@ namespace gpucache
     //---------------------------------------------------------------------------------------------------
     //---------------------------------------------------------------------------------------------------
     template<typename T>
-    inline CacheManager<T>::CacheManager(const tdns::data::VolumeConfiguration &volumeConfiguration, const tdns::data::CacheConfiguration &cacheConfiguration, int32_t gpuID /*= 0*/)
+    inline CacheManager<T>::CacheManager(const tdns::data::VolumeConfiguration &volumeConfiguration, const tdns::data::MetaData& metadata, const tdns::data::CacheConfiguration &cacheConfiguration, int32_t gpuID /*= 0*/)
         : _brickSize(volumeConfiguration.BrickSize),
         _covering(volumeConfiguration.Covering)
     {
@@ -261,7 +261,7 @@ namespace gpucache
 
         // Number of brick requests is limited to 50 !
         _nbMaxRequests = 50;
-        _requestHandler = tdns::common::create_unique_ptr<RequestHandler<T>>(volumeConfiguration, _nbMaxRequests, gpuID);
+        _requestHandler = tdns::common::create_unique_ptr<RequestHandler<T>>(volumeConfiguration, metadata, _nbMaxRequests, gpuID);
         _requestDone = false;
         _requestHandler->start();
 
