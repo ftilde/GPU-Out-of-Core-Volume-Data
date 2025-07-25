@@ -7,6 +7,31 @@ namespace tdns
 {
 namespace graphics
 {
+
+    //__device__ inline float stepToBrickEnd(float3 position, float3 direction, float3 brickSize) {
+    //    float3 inBrickPos = fmodf(position + make_float3(1.0f, 1.0f, 1.0f), brickSize);
+    //    float3 spacePlus = brickSize - inBrickPos;
+    //    float3 spaceMinus = -inBrickPos;
+    //    float3 stepsPlus = spacePlus/direction;
+    //    float3 stepsMinus = spaceMinus/direction;
+
+    //    float steps[6] = {stepsPlus.x, stepsPlus.y, stepsPlus.z, stepsMinus.x, stepsMinus.y, stepsMinus.z};
+
+    //    float minStep=2.0*brickSize.x;
+    //    for(int i=0; i<6; ++i) {
+    //        float step = steps[i];
+    //        if(step > 0) {
+    //            minStep = min(minStep, step);
+    //        }
+    //    }
+
+    //    if(minStep == 2.0*brickSize.x) {
+    //        return brickSize.x;
+    //    }
+
+    //    return minStep;
+    //}
+
     template<typename T>
     __device__ void RayCastDVRImpl(uint32_t *pixelBuffer,
                             cudaTextureObject_t tfTex,
@@ -108,10 +133,17 @@ namespace graphics
                 if (voxelStatus == tdns::gpucache::VoxelStatus::Empty || voxelStatus == tdns::gpucache::VoxelStatus::Unmapped)
                 {
                     float3 brickSize = LODBrickSize[lod];
-                    t += brickSize.x;
+
+                    // Welp, I tried. This still cuts of part of the volume
+                    // since position%brickSize does not quite match up with the
+                    // actual bricks...
+                    // float empty_step = max(stepToBrickEnd(position, direction, brickSize), tstep);
+
+                    float empty_step = tstep;
+                    t += empty_step;
                     if (t > tfar)
                         break;
-                    position += direction * brickSize.x;
+                    position += direction * empty_step;
                     continue;
                 }
 
@@ -252,10 +284,11 @@ namespace graphics
                 if (voxelStatus == tdns::gpucache::VoxelStatus::Empty || voxelStatus == tdns::gpucache::VoxelStatus::Unmapped)
                 {
                     float3 brickSize = LODBrickSize[lod];
-                    t += brickSize.x;
+                    float empty_step = tstep;
+                    t += empty_step;
                     if (t > tfar)
                         break;
-                    position += direction * brickSize.x;
+                    position += direction * empty_step;
                     continue;
                 }
 
