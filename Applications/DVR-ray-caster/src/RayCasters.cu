@@ -132,11 +132,10 @@ namespace graphics
                 // Handle Unmapped and Empty bricks
                 if (voxelStatus == tdns::gpucache::VoxelStatus::Empty || voxelStatus == tdns::gpucache::VoxelStatus::Unmapped)
                 {
-                    float3 brickSize = LODBrickSize[lod];
-
                     // Welp, I tried. This still cuts of part of the volume
                     // since position%brickSize does not quite match up with the
                     // actual bricks...
+                    // float3 brickSize = LODBrickSize[lod];
                     // float empty_step = max(stepToBrickEnd(position, direction, brickSize), tstep);
 
                     float empty_step = tstep;
@@ -283,7 +282,7 @@ namespace graphics
                 // Handle Unmapped and Empty bricks
                 if (voxelStatus == tdns::gpucache::VoxelStatus::Empty || voxelStatus == tdns::gpucache::VoxelStatus::Unmapped)
                 {
-                    float3 brickSize = LODBrickSize[lod];
+                    //float3 brickSize = LODBrickSize[lod];
                     float empty_step = tstep;
                     t += empty_step;
                     if (t > tfar)
