@@ -500,9 +500,10 @@ namespace graphics
 
         int32_t i;
         for(i=0;i<numLODs-1; ++i) {
-            //float leftSpacingDist = max(invLevelsSize[i].x, max(invLevelsSize[i].y, invLevelsSize[i].z));
-            float spacingDistLeft = length(dirLeft * invLevelsSize[i]);
-            float spacingDistUp = length(dirUp * invLevelsSize[i]);
+            int32_t next = i+1;
+            float3 next_spacing = invLevelsSize[next];
+            float spacingDistLeft = length(dirLeft * next_spacing);
+            float spacingDistUp = length(dirUp * next_spacing);
 
             if(spacingDistLeft >= pixelDistX * lod_coarseness || spacingDistUp >= pixelDistY * lod_coarseness) {
                 break;
