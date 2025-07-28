@@ -8,7 +8,7 @@ if [ "$#" -ne 1 ]; then
 fi
 
 
-binary_path=bin/Release
+binary_path=$(realpath $(dirname $0))/bin/Release
 binary_name=main
 config_path=../../config/
 config_name=$(basename $1) #Single paramter of script: data set config file
