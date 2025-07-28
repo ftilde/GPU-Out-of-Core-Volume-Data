@@ -49,7 +49,8 @@ namespace graphics
                     float *d_LODStepSize,
                     uint32_t numLODs,
                     std::vector<float> &histo,
-                    CompositingMode compositingMode
+                    CompositingMode compositingMode,
+                    float initialDistance
                     );
 
     template<typename T>
@@ -94,6 +95,8 @@ namespace graphics
             std::cout << "Invalid compositing mode '" << compositing << "'" << std::endl;
             exit(124);
         }
+        float initialDistance = 3.0; //Default full frame exactly shows front of volume
+        conf.get_field("InitialDistance", initialDistance);
         
         // Init SDL
         create_sdl_context(SDL_INIT_EVERYTHING);
@@ -170,7 +173,7 @@ namespace graphics
         /* --------------------------------------------------------------------------------------------------------------------- */
 
         /*********************** CALL THE DISPLAY FUNCTION ***********************/
-        display(sdlWindow, shader, screenSize, bboxmin, bboxmax, marchingStep, tf, volumeData, manager, d_levelsSize, d_invLevelsSize, d_LODBrickSize, d_LODStepSize, nbLevels, histo, compositingMode);
+        display(sdlWindow, shader, screenSize, bboxmin, bboxmax, marchingStep, tf, volumeData, manager, d_levelsSize, d_invLevelsSize, d_LODBrickSize, d_LODStepSize, nbLevels, histo, compositingMode, initialDistance);
     }
 
     template void display_volume_raycaster<uchar1>(tdns::gpucache::CacheManager<uchar1> *manager, tdns::data::MetaData &volumeData);
@@ -193,7 +196,8 @@ namespace graphics
                     float *d_LODStepSize,
                     uint32_t numLODs,
                     std::vector<float> &histo,
-                    CompositingMode compositingMode
+                    CompositingMode compositingMode,
+                    float initialDistance
                     )
     {
         // Init pixel buffer object and CUDA-OpenGL interoperability ressources
@@ -235,7 +239,7 @@ namespace graphics
         
         // model-view matrix
         float3 viewRotation;
-        float3 viewTranslation = make_float3(0.0, 0.0, -2.0f);
+        float3 viewTranslation = make_float3(0.0, 0.0, -initialDistance);
         float invViewMatrix[12];
         
         bool run = true;
