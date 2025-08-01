@@ -143,6 +143,7 @@ namespace graphics
                             colorStateBuffer[i] = finalColor;
                         }
                         encounteredUnmapped = true;
+                        break;
                     }
                     // Welp, I tried. This still cuts of part of the volume
                     // since position%brickSize does not quite match up with the
@@ -304,6 +305,7 @@ namespace graphics
                             colorStateBuffer[i].x = maxOpacity;
                         }
                         encounteredUnmapped = true;
+                        break;
                     }
                     //float3 brickSize = LODBrickSize[lod];
                     float empty_step = tstep;
