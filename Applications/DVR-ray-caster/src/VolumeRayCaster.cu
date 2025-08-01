@@ -255,6 +255,7 @@ namespace graphics
         float invViewMatrix[12];
         
         bool run = true;
+        bool inRendering = true;
 
         // main loop
         while (run)
@@ -302,7 +303,11 @@ namespace graphics
             glBindTexture(GL_TEXTURE_2D, 0);
 
             // Update the caches manager
-            manager->update();
+            bool done = manager->update();
+            if(done && inRendering) {
+                LOGINFO(40, tdns::common::log_details::Verbosity::INSANE, "Frame done");
+                inRendering = false;
+            }
 
             // Compute cache completude
             std::vector<float> completude;
@@ -320,6 +325,7 @@ namespace graphics
                 ||  viewRotation.z != oldRotation.z || viewTranslation.z != oldTranslation.z) {
                 CUDA_SAFE_CALL(cudaMemset(d_tBuffer, 0, num_bytes));
                 CUDA_SAFE_CALL(cudaMemset(d_colorStateBuffer, 0, num_bytes_colorStateBuffer));
+                inRendering = true;
             }
         }
 

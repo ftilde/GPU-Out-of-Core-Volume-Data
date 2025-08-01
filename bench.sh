@@ -32,7 +32,7 @@ do
 done
 
 # Scan log file, kill rendering process when last non-full request batch is encountered (which means we are done with rendering)
-tail -f ${log_file} | perl -ne 'if (/(\d+)\/(\d+)$/ && $2 == $1 + 1 && $2 != 50) { print; kill 9,'${PID}'; exit }'
+tail -f ${log_file} | perl -ne 'if (/Frame done$/) { print; kill 9,'${PID}'; exit }'
 
 
 #Final evaluation: time difference between first and last brick request
