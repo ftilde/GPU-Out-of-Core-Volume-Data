@@ -76,7 +76,7 @@ namespace app
         std::vector<tdns::data::VolumeConfiguration> volumeConfigurations(1); // only one volume here
         volumeConfigurations[0] = tdns::data::load_volume_configuration(cfg_file);
 
-        const uint64_t vram_size = 8UL << 30;
+        const uint64_t vram_size = 9500UL << 20;
 
         // Cache configuration (size)
         // (here we use only one level of pagination)

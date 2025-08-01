@@ -55,6 +55,8 @@ namespace graphics
 
     template<typename T>
     void get_frame( uint32_t *d_pixelBuffer,
+                    float *d_tBuffer,
+                    float4 *d_colorStateBuffer,
                     cudaTextureObject_t &tfTex,
                     const tdns::math::Vector2ui &screenSize,
                     const tdns::math::Vector3f &bboxmin, const tdns::math::Vector3f &bboxmax,
@@ -225,6 +227,16 @@ namespace graphics
         CUDA_SAFE_CALL(cudaGraphicsMapResources(1, &cuda_pbo_dest_resource, 0));
         CUDA_SAFE_CALL(cudaGraphicsResourceGetMappedPointer((void **)&d_pixelBuffer, &num_bytes, cuda_pbo_dest_resource));
 
+        // t buffer to avoid re-rendering work
+        float *d_tBuffer;
+        CUDA_SAFE_CALL(cudaMalloc(&d_tBuffer, num_bytes));
+        CUDA_SAFE_CALL(cudaMemset(d_tBuffer, 0, num_bytes));
+
+        float4 *d_colorStateBuffer;
+        size_t num_bytes_colorStateBuffer = 4 * num_bytes;
+        CUDA_SAFE_CALL(cudaMalloc(&d_colorStateBuffer, num_bytes_colorStateBuffer));
+        CUDA_SAFE_CALL(cudaMemset(d_colorStateBuffer, 0, num_bytes_colorStateBuffer));
+
         // CUDA transfer function
         cudaArray *d_transferFuncArray;
         cudaChannelFormatDesc channelDesc = cudaCreateChannelDesc<float4>();
@@ -261,7 +273,7 @@ namespace graphics
 
             // update_CUDA_inv_view_model_matrix(viewMatrix, modelMatrix);
             update_CUDA_inv_view_model_matrix(invViewMatrix);
-            get_frame(d_pixelBuffer, tfTex, screenSize, bboxmin, bboxmax, marchingStep, manager, camera, d_levelsSize,d_invLevelsSize, d_LODBrickSize, d_LODStepSize, numLODs, compositingMode);
+            get_frame(d_pixelBuffer, d_tBuffer, d_colorStateBuffer, tfTex, screenSize, bboxmin, bboxmax, marchingStep, manager, camera, d_levelsSize,d_invLevelsSize, d_LODBrickSize, d_LODStepSize, numLODs, compositingMode);
 
             // Bind VAO
             glBindVertexArray(vao);
@@ -300,7 +312,15 @@ namespace graphics
             std::string title = "3DNS - [Cache used " + std::to_string(completude[0] * 100.f) + "%]";
             window.set_title(title);
 
+            auto oldRotation = viewRotation;
+            auto oldTranslation = viewTranslation;
             handle_event(window, viewRotation, viewTranslation, marchingStep, run);
+            if(     viewRotation.x != oldRotation.x || viewTranslation.x != oldTranslation.x
+                ||  viewRotation.y != oldRotation.y || viewTranslation.y != oldTranslation.y
+                ||  viewRotation.z != oldRotation.z || viewTranslation.z != oldTranslation.z) {
+                CUDA_SAFE_CALL(cudaMemset(d_tBuffer, 0, num_bytes));
+                CUDA_SAFE_CALL(cudaMemset(d_colorStateBuffer, 0, num_bytes_colorStateBuffer));
+            }
         }
 
         /********  Cleanup ********/
@@ -329,6 +349,8 @@ namespace graphics
     //---------------------------------------------------------------------------------------------
     template<typename T>
     void get_frame( uint32_t *d_pixelBuffer,
+                    float *d_tBuffer,
+                    float4 *d_colorStateBuffer,
                     cudaTextureObject_t &tfTex,
                     const tdns::math::Vector2ui &screenSize,
                     const tdns::math::Vector3f &bboxmin, const tdns::math::Vector3f &bboxmax,
@@ -355,6 +377,8 @@ namespace graphics
             case CompositingMode::DVR:
                 RayCastDVR<<<gridDim, blockDim>>>(
                     d_pixelBuffer,
+                    d_tBuffer,
+                    d_colorStateBuffer,
                     tfTex,
                     *reinterpret_cast<const uint2*>(screenSize.data()),
                     renderScreenWidth,
@@ -372,6 +396,8 @@ namespace graphics
             case CompositingMode::MOP:
                 RayCastMOP<<<gridDim, blockDim>>>(
                     d_pixelBuffer,
+                    d_tBuffer,
+                    d_colorStateBuffer,
                     tfTex,
                     *reinterpret_cast<const uint2*>(screenSize.data()),
                     renderScreenWidth,

@@ -34,6 +34,8 @@ namespace graphics
 
     template<typename T>
     __device__ void RayCastDVRImpl(uint32_t *pixelBuffer,
+                            float *tBuffer,
+                            float4 *colorStateBuffer,
                             cudaTextureObject_t tfTex,
                             uint2 screenSize,
                             uint32_t renderScreenWidth,
@@ -84,9 +86,12 @@ namespace graphics
         // find intersection with box
         float tnear, tfar;
         int32_t intersected = intersectBox(origin, direction, bboxMin, bboxMax, &tnear, &tfar);
-        
+        uint32_t i = y * screenSize.x + x;
+        tnear = max(tnear, tBuffer[i]);
+
+        bool encounteredUnmapped = false;
         const float3 bgColor = {0.f, 0.f, 0.f};
-        float4 finalColor = {0.f, 0.f, 0.f, 0.f};
+        float4 finalColor = colorStateBuffer[i];
 
         if (!intersected)
         {
@@ -111,7 +116,7 @@ namespace graphics
             float endPixelDistY = abs(dot(direction - directionYN, directionUp) * tfar);
 
             // Print the bouding box edges in red
-            // print_bb_edges(bboxMin, bboxMax, position, finalColor);
+            //print_bb_edges(bboxMin, bboxMax, position, finalColor);
             
             // march along ray from front to back, accumulating color
             while (finalColor.w < 0.95f && t < tfar)
@@ -132,6 +137,13 @@ namespace graphics
                 // Handle Unmapped and Empty bricks
                 if (voxelStatus == tdns::gpucache::VoxelStatus::Empty || voxelStatus == tdns::gpucache::VoxelStatus::Unmapped)
                 {
+                    if(voxelStatus == tdns::gpucache::VoxelStatus::Unmapped) {
+                        if(!encounteredUnmapped) {
+                            tBuffer[i] = t;
+                            colorStateBuffer[i] = finalColor;
+                        }
+                        encounteredUnmapped = true;
+                    }
                     // Welp, I tried. This still cuts of part of the volume
                     // since position%brickSize does not quite match up with the
                     // actual bricks...
@@ -172,18 +184,22 @@ namespace graphics
                 step = direction * LODStepSize[lod];
                 // step = direction * tstep;
                 position += step;
-                    
+            }
+            if(!encounteredUnmapped) {
+                tBuffer[i] = t;
+                colorStateBuffer[i] = finalColor;
             }
         }
         // Brightness
         // finalColor *= 1.5f;
 
-        uint32_t i = y * screenSize.x + x;
         pixelBuffer[i] = rgbaFloatToInt(finalColor);
     }
 
     template<typename T>
     __device__ void RayCastMOPImpl(uint32_t *pixelBuffer,
+                            float *tBuffer,
+                            float4 *colorStateBuffer,
                             cudaTextureObject_t tfTex,
                             uint2 screenSize,
                             uint32_t renderScreenWidth,
@@ -234,7 +250,10 @@ namespace graphics
         // find intersection with box
         float tnear, tfar;
         int32_t intersected = intersectBox(origin, direction, bboxMin, bboxMax, &tnear, &tfar);
-        
+        uint32_t i = y * screenSize.x + x;
+        tnear = max(tnear, tBuffer[i]);
+
+        bool encounteredUnmapped = false;
         const float3 bgColor = {0.f, 0.f, 0.f};
         float4 finalColor = {0.f, 0.f, 0.f, 0.f};
 
@@ -252,16 +271,13 @@ namespace graphics
             float3 position = origin + direction * tnear;
             float3 step;
             // float3 step = direction * tstep;
-            float maxOpacity = 0.0;
+            float maxOpacity = colorStateBuffer[i].x;
             float sample;
             float3 texturePosition = {0.f, 0.f, 0.f};
             float3 normalizedPosition = {0.f, 0.f, 0.f};
 
             float endPixelDistX = abs(dot(direction - directionXN, directionLeft) * tfar);
             float endPixelDistY = abs(dot(direction - directionYN, directionUp) * tfar);
-
-            // Print the bouding box edges in red
-            // print_bb_edges(bboxMin, bboxMax, position, finalColor);
             
             // march along ray from front to back, accumulating color
             while (t < tfar)
@@ -282,6 +298,13 @@ namespace graphics
                 // Handle Unmapped and Empty bricks
                 if (voxelStatus == tdns::gpucache::VoxelStatus::Empty || voxelStatus == tdns::gpucache::VoxelStatus::Unmapped)
                 {
+                    if(voxelStatus == tdns::gpucache::VoxelStatus::Unmapped) {
+                        if(!encounteredUnmapped) {
+                            tBuffer[i] = t;
+                            colorStateBuffer[i].x = maxOpacity;
+                        }
+                        encounteredUnmapped = true;
+                    }
                     //float3 brickSize = LODBrickSize[lod];
                     float empty_step = tstep;
                     t += empty_step;
@@ -305,20 +328,28 @@ namespace graphics
                 position += step;
                     
             }
+            if(!encounteredUnmapped) {
+                tBuffer[i] = t;
+                colorStateBuffer[i].x = maxOpacity;
+            }
 
             // classification
             finalColor = tex1D<float4>(tfTex, maxOpacity);
+
+            // Print the bouding box edges in red
+            //print_bb_edges(bboxMin, bboxMax, position, finalColor);
         }
 
         // Brightness
         // finalColor *= 1.5f;
 
-        uint32_t i = y * screenSize.x + x;
         pixelBuffer[i] = rgbaFloatToInt(finalColor);
     }
 
     /// DVR ------------------------------------------------------------------------
     __global__ void RayCastDVR(uint32_t *pixelBuffer,
+                            float *tBuffer,
+                            float4 *colorStateBuffer,
                             cudaTextureObject_t tfTex,
                             uint2 screenSize,
                             uint32_t renderScreenWidth,
@@ -333,9 +364,11 @@ namespace graphics
                             uint32_t numLODs,
                             size_t seed)
     {
-        RayCastDVRImpl(pixelBuffer, tfTex, screenSize, renderScreenWidth, fov, bboxMin, bboxMax, steps, tstep, manager, invLevelsSize, levelsSize, LODBrickSize, LODStepSize, numLODs, seed);
+        RayCastDVRImpl(pixelBuffer, tBuffer, colorStateBuffer, tfTex, screenSize, renderScreenWidth, fov, bboxMin, bboxMax, steps, tstep, manager, invLevelsSize, levelsSize, LODBrickSize, LODStepSize, numLODs, seed);
     }
     __global__ void RayCastDVR(uint32_t *pixelBuffer,
+                            float *tBuffer,
+                            float4 *colorStateBuffer,
                             cudaTextureObject_t tfTex,
                             uint2 screenSize,
                             uint32_t renderScreenWidth,
@@ -350,9 +383,11 @@ namespace graphics
                             uint32_t numLODs,
                             size_t seed)
     {
-        RayCastDVRImpl(pixelBuffer, tfTex, screenSize, renderScreenWidth, fov, bboxMin, bboxMax, steps, tstep, manager, invLevelsSize, levelsSize, LODBrickSize, LODStepSize, numLODs, seed);
+        RayCastDVRImpl(pixelBuffer, tBuffer, colorStateBuffer, tfTex, screenSize, renderScreenWidth, fov, bboxMin, bboxMax, steps, tstep, manager, invLevelsSize, levelsSize, LODBrickSize, LODStepSize, numLODs, seed);
     }
     __global__ void RayCastDVR(uint32_t *pixelBuffer,
+                            float *tBuffer,
+                            float4 *colorStateBuffer,
                             cudaTextureObject_t tfTex,
                             uint2 screenSize,
                             uint32_t renderScreenWidth,
@@ -367,12 +402,14 @@ namespace graphics
                             uint32_t numLODs,
                             size_t seed)
     {
-        RayCastDVRImpl(pixelBuffer, tfTex, screenSize, renderScreenWidth, fov, bboxMin, bboxMax, steps, tstep, manager, invLevelsSize, levelsSize, LODBrickSize, LODStepSize, numLODs, seed);
+        RayCastDVRImpl(pixelBuffer, tBuffer, colorStateBuffer, tfTex, screenSize, renderScreenWidth, fov, bboxMin, bboxMax, steps, tstep, manager, invLevelsSize, levelsSize, LODBrickSize, LODStepSize, numLODs, seed);
     }
 
     /// MOP ------------------------------------------------------------------------
 
     __global__ void RayCastMOP(uint32_t *pixelBuffer,
+                            float *tBuffer,
+                            float4 *colorStateBuffer,
                             cudaTextureObject_t tfTex,
                             uint2 screenSize,
                             uint32_t renderScreenWidth,
@@ -387,9 +424,11 @@ namespace graphics
                             uint32_t numLODs,
                             size_t seed)
     {
-        RayCastMOPImpl(pixelBuffer, tfTex, screenSize, renderScreenWidth, fov, bboxMin, bboxMax, steps, tstep, manager, invLevelsSize, levelsSize, LODBrickSize, LODStepSize, numLODs, seed);
+        RayCastMOPImpl(pixelBuffer, tBuffer, colorStateBuffer, tfTex, screenSize, renderScreenWidth, fov, bboxMin, bboxMax, steps, tstep, manager, invLevelsSize, levelsSize, LODBrickSize, LODStepSize, numLODs, seed);
     }
     __global__ void RayCastMOP(uint32_t *pixelBuffer,
+                            float *tBuffer,
+                            float4 *colorStateBuffer,
                             cudaTextureObject_t tfTex,
                             uint2 screenSize,
                             uint32_t renderScreenWidth,
@@ -404,9 +443,11 @@ namespace graphics
                             uint32_t numLODs,
                             size_t seed)
     {
-        RayCastMOPImpl(pixelBuffer, tfTex, screenSize, renderScreenWidth, fov, bboxMin, bboxMax, steps, tstep, manager, invLevelsSize, levelsSize, LODBrickSize, LODStepSize, numLODs, seed);
+        RayCastMOPImpl(pixelBuffer, tBuffer, colorStateBuffer, tfTex, screenSize, renderScreenWidth, fov, bboxMin, bboxMax, steps, tstep, manager, invLevelsSize, levelsSize, LODBrickSize, LODStepSize, numLODs, seed);
     }
     __global__ void RayCastMOP(uint32_t *pixelBuffer,
+                            float *tBuffer,
+                            float4 *colorStateBuffer,
                             cudaTextureObject_t tfTex,
                             uint2 screenSize,
                             uint32_t renderScreenWidth,
@@ -421,7 +462,7 @@ namespace graphics
                             uint32_t numLODs,
                             size_t seed)
     {
-        RayCastMOPImpl(pixelBuffer, tfTex, screenSize, renderScreenWidth, fov, bboxMin, bboxMax, steps, tstep, manager, invLevelsSize, levelsSize, LODBrickSize, LODStepSize, numLODs, seed);
+        RayCastMOPImpl(pixelBuffer, tBuffer, colorStateBuffer, tfTex, screenSize, renderScreenWidth, fov, bboxMin, bboxMax, steps, tstep, manager, invLevelsSize, levelsSize, LODBrickSize, LODStepSize, numLODs, seed);
     }
 
     // DEVICE FUNC
@@ -490,6 +531,18 @@ namespace graphics
         rgba.w = __saturatef(rgba.w);
 
         return (uint(rgba.w * 255) << 24) | (uint(rgba.z * 255) << 16) | (uint(rgba.y * 255) << 8) | uint(rgba.x * 255);
+    }
+
+    //---------------------------------------------------------------------------------------------
+    inline __device__ float4 intToRgbaFloat(const uint &v)
+    {
+        float4 out;
+        out.x = (float)((v >>  0) & 0xff) / 255.0;
+        out.y = (float)((v >>  8) & 0xff) / 255.0;
+        out.z = (float)((v >> 16) & 0xff) / 255.0;
+        out.w = (float)((v >> 24) & 0xff) / 255.0;
+
+        return out;
     }
 
     //---------------------------------------------------------------------------------------------
